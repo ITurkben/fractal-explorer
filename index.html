@@ -22,12 +22,13 @@
   }
   canvas.dragging { cursor: grabbing; }
 
-  /* ── UI Layer ─────────────────────────────────────────── */
+  /* ── UI Layer ─────────────────────────────────────────────── */
   #ui {
     position: fixed;
     inset: 0;
     pointer-events: none;
     transition: opacity 0.6s ease;
+    z-index: 10;
   }
   #ui.hidden { opacity: 0; }
 
@@ -41,7 +42,7 @@
     color: #e8ecf4;
   }
 
-  /* ── Controls Panel ───────────────────────────────────── */
+  /* ── Controls Panel ───────────────────────────────────────── */
   #controls {
     position: absolute;
     top: 18px;
@@ -53,6 +54,8 @@
     flex-direction: column;
     gap: 12px;
     font-size: 12px;
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
   }
 
   #controls h1 {
@@ -62,6 +65,7 @@
     text-transform: uppercase;
     color: #a9c3ff;
     margin-bottom: 2px;
+    flex-shrink: 0;
   }
 
   .ctrl-row {
@@ -90,6 +94,7 @@
   }
 
   select:focus { border-color: rgba(169,195,255,0.5); }
+  select option { background: #0d1525; }
 
   input[type="range"] {
     padding: 0;
@@ -100,44 +105,27 @@
     background: linear-gradient(to right, #4d7fff var(--pct,50%), rgba(255,255,255,0.12) var(--pct,50%));
   }
   input[type="range"]::-webkit-slider-thumb {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #a9c3ff;
-    cursor: pointer;
-    border: 2px solid #1a2540;
+    appearance: none; -webkit-appearance: none;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #a9c3ff; cursor: pointer; border: 2px solid #1a2540;
   }
   input[type="range"]::-moz-range-thumb {
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    background: #a9c3ff;
-    cursor: pointer;
-    border: 2px solid #1a2540;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #a9c3ff; cursor: pointer; border: 2px solid #1a2540;
   }
 
-  .ctrl-row .range-val {
-    text-align: right;
-    color: #a9c3ff;
-    font-size: 11px;
-    margin-top: -2px;
-  }
+  .ctrl-row .range-val { text-align: right; color: #a9c3ff; font-size: 11px; margin-top: -2px; }
 
-  .btn-row {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
 
   button {
     flex: 1;
-    min-width: 70px;
-    padding: 7px 8px;
+    min-width: 60px;
+    padding: 7px 6px;
     font-size: 11px;
     font-family: inherit;
     font-weight: 600;
-    letter-spacing: 0.8px;
+    letter-spacing: 0.7px;
     text-transform: uppercase;
     border: 1px solid rgba(255,255,255,0.15);
     border-radius: 8px;
@@ -147,19 +135,16 @@
     transition: background 0.2s, border-color 0.2s;
     pointer-events: all;
   }
-  button:hover { background: rgba(169,195,255,0.18); border-color: rgba(169,195,255,0.4); }
+  button:hover  { background: rgba(169,195,255,0.18); border-color: rgba(169,195,255,0.4); }
   button:active { background: rgba(169,195,255,0.28); }
   button.active { background: rgba(100,160,255,0.3); border-color: rgba(169,195,255,0.6); color: #fff; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
 
   #juliaControls { display: none; }
+  .separator { height: 1px; background: rgba(255,255,255,0.08); margin: 2px 0; }
+  .hint { font-size: 10px; color: rgba(255,255,255,0.3); line-height: 1.5; margin-top: 2px; }
 
-  .separator {
-    height: 1px;
-    background: rgba(255,255,255,0.08);
-    margin: 2px 0;
-  }
-
-  /* ── Coordinate Overlay ───────────────────────────────── */
+  /* ── Coordinate Overlay ───────────────────────────────────── */
   #overlay {
     position: absolute;
     bottom: 18px;
@@ -167,12 +152,12 @@
     padding: 10px 14px;
     pointer-events: none;
     font-size: 11px;
-    line-height: 1.7;
+    line-height: 1.75;
     color: #7b8fa8;
   }
   #overlay span { color: #a9c3ff; }
 
-  /* ── Loading / Intro ──────────────────────────────────── */
+  /* ── Intro / Loading ──────────────────────────────────────── */
   #intro {
     position: absolute;
     inset: 0;
@@ -181,39 +166,264 @@
     justify-content: center;
     pointer-events: none;
     transition: opacity 1s ease;
+    z-index: 50;
   }
-  #intro.hidden { opacity: 0; }
+  #intro.hidden { opacity: 0; pointer-events: none; }
   #introText {
     text-align: center;
     color: rgba(169,195,255,0.8);
     font-size: 13px;
     letter-spacing: 3px;
     text-transform: uppercase;
-    animation: pulse 2s ease-in-out infinite;
   }
-  @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+  .spinner {
+    width: 28px; height: 28px;
+    border: 2px solid rgba(169,195,255,0.2);
+    border-top-color: rgba(169,195,255,0.8);
+    border-radius: 50%;
+    margin: 12px auto 0;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ── Tooltip ──────────────────────────────────────────── */
-  .hint {
+  /* ── Tour Panel ───────────────────────────────────────────── */
+  #tourPanel {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    width: 300px;
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+    padding: 16px;
+    pointer-events: all;
+    transform: translateX(calc(-100% - 18px));
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 20;
+  }
+  #tourPanel.open { transform: translateX(0); }
+  #tourPanel h2 {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #a9c3ff;
+    margin-bottom: 12px;
+  }
+
+  .tour-card {
+    border-radius: 10px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.08);
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .tour-card:hover {
+    transform: translateX(4px);
+    border-color: rgba(169,195,255,0.35);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  .tour-card.active { border-color: rgba(169,195,255,0.6); }
+  .tour-thumb {
+    height: 56px;
+    position: relative;
+    overflow: hidden;
+  }
+  .tour-card-body {
+    padding: 8px 12px 10px;
+    background: rgba(8, 10, 20, 0.82);
+  }
+  .tour-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: #a9c3ff;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+  .tour-desc {
     font-size: 10px;
-    color: rgba(255,255,255,0.3);
-    line-height: 1.5;
-    margin-top: 2px;
+    color: rgba(200,215,240,0.45);
+    margin-top: 3px;
+    line-height: 1.45;
+  }
+  .tour-tag {
+    display: inline-block;
+    font-size: 9px;
+    padding: 1px 6px;
+    border-radius: 20px;
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: 700;
+    opacity: 0.7;
+  }
+  .tag-mandelbrot { background: rgba(60,100,255,0.3); color: #a9c3ff; }
+  .tag-julia      { background: rgba(200,60,255,0.3); color: #e0a9ff; }
+  .tag-burning    { background: rgba(255,100,20,0.3); color: #ffc09f; }
+  .tag-newton     { background: rgba(60,200,100,0.3); color: #a9ffca; }
+
+  /* Tour thumbnails — evocative CSS backgrounds */
+  .t0 { background: radial-gradient(ellipse at 28% 55%, #133a8a 0%, #06163d 40%, #000 100%); }
+  .t1 { background: radial-gradient(ellipse at 60% 40%, #7a4a00 0%, #2a1600 50%, #000 100%); }
+  .t2 { background: radial-gradient(ellipse at 40% 50%, #5a0080 0%, #200040 50%, #000 100%),
+                    radial-gradient(ellipse at 70% 50%, rgba(0,200,255,0.25) 0%, transparent 50%); }
+  .t3 { background: radial-gradient(circle at 50% 50%, #c8b000 0%, #403000 35%, #000 70%); }
+  .t4 { background: radial-gradient(ellipse at 35% 50%, #8a0020 0%, #300010 50%, #000 100%); }
+  .t5 { background: repeating-linear-gradient(45deg,#fff1 0,#fff1 1px,transparent 1px,transparent 6px),
+                    radial-gradient(ellipse at 50% 50%, #2a3060 0%, #000 70%); }
+  .t6 { background: radial-gradient(ellipse at 50% 80%, #a04000 0%, #300a00 50%, #000 100%); }
+  .t7 { background: conic-gradient(from 0deg at 50% 50%, #100020 0deg, #003510 120deg, #200010 240deg, #100020 360deg); }
+
+  /* ── Record Modal ─────────────────────────────────────────── */
+  #recordModal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    background: rgba(0,0,0,0.7);
+    pointer-events: all;
+    display: none;
+  }
+  #recordModal.open { display: flex; }
+  .modal-box {
+    width: 320px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    font-size: 12px;
+  }
+  .modal-box h2 {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #a9c3ff;
+    margin-bottom: 2px;
+  }
+  .modal-close {
+    position: absolute;
+    top: 12px; right: 14px;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.5);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0 4px;
+    min-width: auto;
+    flex: none;
+    pointer-events: all;
+  }
+  .modal-close:hover { color: #fff; background: none; }
+  .modal-inner { position: relative; }
+
+  /* Progress bar */
+  #recordProgress {
+    display: none;
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  #recordProgressFill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #4d7fff, #a9c3ff);
+    border-radius: 2px;
+    transition: width 0.1s linear;
+  }
+  #recordStatus { font-size: 11px; color: #7b8fa8; text-align: center; }
+
+  /* ── Help Modal ───────────────────────────────────────────── */
+  #helpModal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    background: rgba(0,0,0,0.75);
+    pointer-events: all;
+    display: none;
+  }
+  #helpModal.open { display: flex; }
+  #helpModal .modal-box { max-width: 380px; width: 90%; }
+  .kbd-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 5px 14px;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .kbd-grid .k {
+    font-family: inherit;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 4px;
+    padding: 1px 6px;
+    white-space: nowrap;
+    text-align: center;
+    color: #a9c3ff;
+    font-size: 10px;
+    align-self: center;
+    letter-spacing: 0.5px;
+  }
+  .kbd-grid .v { color: rgba(200,215,240,0.6); align-self: center; }
+  .help-section { font-size: 10px; color: #7b8fa8; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; margin-top: 4px; }
+
+  /* ── ? Help Button ────────────────────────────────────────── */
+  #btnHelp {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 15px;
+    font-weight: 700;
+    flex: none;
+    min-width: auto;
+    pointer-events: all;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    transition: transform 0.2s;
+  }
+  #btnHelp.shifted { transform: translateX(318px); }
+  #btnHelp:hover { transform: scale(1.1); }
+  #btnHelp.shifted:hover { transform: translateX(318px) scale(1.1); }
+
+  /* Video progress overlay */
+  #videoBar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: rgba(255,255,255,0.1);
+    pointer-events: none;
+    display: none;
+  }
+  #videoBarFill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #ff4455, #ff8800, #ffe000);
+    transition: width 0.05s linear;
   }
 
-  /* ── Mobile adjustments ───────────────────────────────── */
+  /* ── Mobile ───────────────────────────────────────────────── */
   @media (max-width: 480px) {
     #controls {
-      top: auto;
-      bottom: 0;
-      right: 0;
-      left: 0;
-      width: 100%;
-      border-radius: 16px 16px 0 0;
-      max-height: 55vh;
-      overflow-y: auto;
+      top: auto; bottom: 0; right: 0; left: 0;
+      width: 100%; border-radius: 16px 16px 0 0;
+      max-height: 55vh; overflow-y: auto;
     }
+    #tourPanel { top: auto; bottom: 0; left: 0; right: 0; width: 100%; border-radius: 16px 16px 0 0; transform: translateY(105%); }
+    #tourPanel.open { transform: translateY(0); }
     #overlay { display: none; }
+    #btnHelp { top: 10px; left: 10px; }
   }
 </style>
 </head>
@@ -222,9 +432,22 @@
 <canvas id="canvas"></canvas>
 
 <div id="ui">
-  <!-- Intro text -->
+  <!-- Loading / Intro -->
   <div id="intro">
-    <div id="introText">Fractal Explorer<br><span style="font-size:10px;opacity:0.6">Loading…</span></div>
+    <div id="introText">
+      Fractal Explorer
+      <div style="font-size:10px;opacity:0.55;margin-top:4px">Compiling shaders…</div>
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- Help button (?) -->
+  <button id="btnHelp" class="glass" title="Keyboard shortcuts (?)">?</button>
+
+  <!-- Tour Panel -->
+  <div id="tourPanel" class="glass">
+    <h2>Legendary Locations</h2>
+    <div id="tourCards"></div>
   </div>
 
   <!-- Main controls panel -->
@@ -250,7 +473,7 @@
         <label>Julia Im(c): <span id="jcimVal">0.27</span></label>
         <input type="range" id="jcim" min="-2" max="2" step="0.001" value="0.27">
       </div>
-      <div class="hint">Or hold <kbd style="background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px">Alt</kbd> + move mouse to set c live</div>
+      <div class="hint">Hold <kbd style="background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px">Alt</kbd> + move mouse to set c live</div>
     </div>
 
     <div class="ctrl-row">
@@ -262,6 +485,16 @@
         <option value="3">Black &amp; White</option>
         <option value="4" selected>Smooth Rainbow</option>
         <option value="5">Electric Neon</option>
+      </select>
+    </div>
+
+    <div class="ctrl-row">
+      <label>Coloring Mode</label>
+      <select id="colorModeSelect">
+        <option value="0" selected>Smooth Iteration</option>
+        <option value="1">Distance Estimation</option>
+        <option value="2">Orbit Trap (Cross)</option>
+        <option value="3">Interior Coloring</option>
       </select>
     </div>
 
@@ -278,16 +511,20 @@
     <div class="separator"></div>
 
     <div class="btn-row">
-      <button id="btnAA" title="Toggle 2× anti-aliasing">AA: OFF</button>
-      <button id="btnReset">Reset View</button>
+      <button id="btnAA"    title="Toggle 2× anti-aliasing (A)">AA: OFF</button>
+      <button id="btnReset" title="Reset view (R)">Reset</button>
+      <button id="btnTour"  title="Guided tour (T)">Tour</button>
     </div>
     <div class="btn-row">
-      <button id="btnShare">Share URL</button>
-      <button id="btnShot2x">PNG 2×</button>
-      <button id="btnShot4x">PNG 4×</button>
+      <button id="btnShare"  title="Copy shareable URL (U)">Share</button>
+      <button id="btnShot2x" title="Screenshot 2× (S)">PNG 2×</button>
+      <button id="btnShot4x" title="Screenshot 4×">PNG 4×</button>
+    </div>
+    <div class="btn-row">
+      <button id="btnRecord" title="Record zoom video">⏺ Record</button>
     </div>
 
-    <div class="hint">Scroll to zoom · Drag to pan · Double-click to center</div>
+    <div class="hint">Scroll: zoom · Drag: pan · Dbl-click: center · Alt+drag (Julia c)</div>
   </div>
 
   <!-- Coordinate overlay -->
@@ -295,276 +532,383 @@
     Re: <span id="ovRe">−0.500000</span><br>
     Im: <span id="ovIm">0.000000</span><br>
     Zoom: <span id="ovZoom">300</span>×<br>
-    Fractal: <span id="ovFrac">Mandelbrot</span>
+    Fractal: <span id="ovFrac">Mandelbrot</span><br>
+    FPS: <span id="ovFPS" style="display:none">—</span>
+  </div>
+
+  <!-- Video progress bar (bottom edge) -->
+  <div id="videoBar"><div id="videoBarFill"></div></div>
+</div>
+
+<!-- Record Modal -->
+<div id="recordModal">
+  <div class="modal-inner">
+    <div class="glass modal-box">
+      <button class="modal-close" id="recordModalClose">✕</button>
+      <h2>⏺ Record Zoom</h2>
+
+      <div class="ctrl-row">
+        <label>Zoom Depth — ×10<sup><span id="recExpVal">6</span></sup> from current</label>
+        <input type="range" id="recExp" min="2" max="12" step="0.5" value="6">
+      </div>
+
+      <div class="ctrl-row">
+        <label>Duration — <span id="recDurVal">10</span> seconds</label>
+        <input type="range" id="recDur" min="5" max="30" step="1" value="10">
+      </div>
+
+      <div id="recordProgress"><div id="recordProgressFill"></div></div>
+      <div id="recordStatus" style="display:none">Recording…</div>
+
+      <div class="btn-row">
+        <button id="recStartBtn">Start Recording</button>
+        <button id="recCancelBtn" style="display:none">Cancel</button>
+      </div>
+
+      <div class="hint">Captures a .webm video of the zoom animation. Keep the tab visible and don't interact during recording.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Help Modal -->
+<div id="helpModal">
+  <div class="modal-inner">
+    <div class="glass modal-box">
+      <button class="modal-close" id="helpClose">✕</button>
+      <h2>Keyboard Shortcuts</h2>
+      <div class="help-section">Navigation</div>
+      <div class="kbd-grid">
+        <span class="k">↑ ↓ ← →</span><span class="v">Pan view</span>
+        <span class="k">+ / −</span><span class="v">Zoom in / out</span>
+        <span class="k">R</span><span class="v">Reset view</span>
+        <span class="k">F</span><span class="v">Toggle fullscreen</span>
+        <span class="k">Dbl-click</span><span class="v">Center on point</span>
+      </div>
+      <div class="help-section" style="margin-top:10px">Display</div>
+      <div class="kbd-grid">
+        <span class="k">H</span><span class="v">Hide / show UI</span>
+        <span class="k">A</span><span class="v">Toggle anti-aliasing</span>
+        <span class="k">P</span><span class="v">Cycle color palette</span>
+        <span class="k">1–4</span><span class="v">Switch fractal type</span>
+        <span class="k">I</span><span class="v">Toggle FPS counter</span>
+      </div>
+      <div class="help-section" style="margin-top:10px">Actions</div>
+      <div class="kbd-grid">
+        <span class="k">S</span><span class="v">Screenshot (2×)</span>
+        <span class="k">U</span><span class="v">Copy share URL</span>
+        <span class="k">T</span><span class="v">Open/close tour</span>
+        <span class="k">?</span><span class="v">This help panel</span>
+        <span class="k">Esc</span><span class="v">Close panels / cancel</span>
+      </div>
+      <div class="help-section" style="margin-top:10px">Julia Set</div>
+      <div class="kbd-grid">
+        <span class="k">Alt + move</span><span class="v">Set Julia c live</span>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
 'use strict';
-// ══════════════════════════════════════════════════════
-//  SHADERS
-// ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+//  GLSL SHADERS
+// ══════════════════════════════════════════════════════════════
 const VERT_SRC = `#version 300 es
 in vec2 a_pos;
-void main() {
-  gl_Position = vec4(a_pos, 0.0, 1.0);
-}`;
+void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }`;
 
 const FRAG_SRC = `#version 300 es
 precision highp float;
-
 out vec4 fragColor;
 
-uniform vec2 u_res;          // canvas resolution
-uniform vec2 u_cx;           // center real  (hi, lo)
-uniform vec2 u_cy;           // center imag  (hi, lo)
-uniform float u_invZoom;     // 1 / zoom (complex units per pixel)
-uniform int  u_type;         // 0=Mandelbrot 1=Julia 2=BurningShip 3=Newton
-uniform vec2 u_jc;           // Julia constant c
-uniform int  u_maxIter;
-uniform int  u_palette;
+uniform vec2  u_res;
+uniform vec2  u_cx;          // center real  (hi, lo) — emulated double
+uniform vec2  u_cy;          // center imag  (hi, lo)
+uniform float u_invZoom;     // 1 / zoom  (complex units per pixel)
+uniform int   u_type;        // 0=Mandelbrot 1=Julia 2=BurningShip 3=Newton
+uniform vec2  u_jc;          // Julia constant c
+uniform int   u_maxIter;
+uniform int   u_palette;
 uniform float u_colorOff;
-uniform bool u_aa;           // 2×2 supersampling
+uniform bool  u_aa;          // 2×2 supersampling
+uniform int   u_colorMode;   // 0=smooth 1=DE 2=orbitTrap 3=interior
 
-// ── Double-float arithmetic (Veltkamp-Dekker) ────────────────
+// ── Double-float arithmetic (Veltkamp-Dekker) ─────────────────
 vec2 df_add(vec2 a, vec2 b) {
-  float s = a.x + b.x;
-  float v = s - a.x;
-  float e = (a.x - (s - v)) + (b.x - v) + a.y + b.y;
+  float s = a.x + b.x, v = s - a.x;
+  float e = (a.x-(s-v)) + (b.x-v) + a.y + b.y;
   float hi = s + e;
   return vec2(hi, e - (hi - s));
 }
-
-vec2 df_sub(vec2 a, vec2 b) {
-  return df_add(a, vec2(-b.x, -b.y));
-}
-
+vec2 df_sub(vec2 a, vec2 b) { return df_add(a, vec2(-b.x,-b.y)); }
 vec2 df_two_prod(float a, float b) {
   float p = a * b;
-  const float SPLIT = 4097.0;
-  float at = SPLIT * a, ah = at - (at - a), al = a - ah;
-  float bt = SPLIT * b, bh = bt - (bt - b), bl = b - bh;
-  float err = ((ah*bh - p) + ah*bl + al*bh) + al*bl;
-  return vec2(p, err);
+  const float S = 4097.0;
+  float at=S*a, ah=at-(at-a), al=a-ah;
+  float bt=S*b, bh=bt-(bt-b), bl=b-bh;
+  return vec2(p, ((ah*bh-p)+ah*bl+al*bh)+al*bl);
 }
-
 vec2 df_mul(vec2 a, vec2 b) {
   vec2 p = df_two_prod(a.x, b.x);
   p.y += a.x*b.y + a.y*b.x;
   float hi = p.x + p.y;
-  return vec2(hi, p.y - (hi - p.x));
+  return vec2(hi, p.y-(hi-p.x));
 }
-
 vec2 df_sqr(vec2 a) { return df_mul(a, a); }
+vec2 df_f(float f)  { return vec2(f, 0.0); }
 
-vec2 df_f(float f) { return vec2(f, 0.0); }
-
-// ── Pixel → complex coordinate (double) ──────────────────────
-vec2 px2df(float px, vec2 center) {
-  float off = (px) * u_invZoom;
-  return df_add(center, df_f(off));
-}
-
-// ── Color palettes ────────────────────────────────────────────
+// ── Color palettes ─────────────────────────────────────────────
 vec3 hsv(float h, float s, float v) {
-  vec3 c = abs(mod(vec3(h*6.0)+vec3(0,4,2), 6.0) - 3.0) - 1.0;
+  vec3 c = abs(mod(vec3(h*6.0)+vec3(0,4,2), 6.0)-3.0)-1.0;
   return v * mix(vec3(1.0), clamp(c,0.0,1.0), s);
 }
-
 vec3 palette(float t) {
   t = fract(t + u_colorOff);
-  if (u_palette == 0) { // Fire
-    if (t < 0.333) return mix(vec3(0),     vec3(1,0.1,0),   t*3.0);
-    if (t < 0.667) return mix(vec3(1,0.1,0), vec3(1,0.95,0.1), (t-0.333)*3.0);
-    return mix(vec3(1,0.95,0.1), vec3(1),   (t-0.667)*3.0);
+  if (u_palette == 0) {
+    if (t<.333) return mix(vec3(0),vec3(1,.1,0),t*3.);
+    if (t<.667) return mix(vec3(1,.1,0),vec3(1,.95,.1),(t-.333)*3.);
+    return mix(vec3(1,.95,.1),vec3(1),(t-.667)*3.);
   }
-  if (u_palette == 1) { // Ocean
-    if (t < 0.25) return mix(vec3(0),           vec3(0.0,0.05,0.3),  t*4.0);
-    if (t < 0.55) return mix(vec3(0.0,0.05,0.3),vec3(0.0,0.5,0.9),   (t-0.25)*3.33);
-    if (t < 0.80) return mix(vec3(0.0,0.5,0.9), vec3(0.4,0.9,1.0),   (t-0.55)*4.0);
-    return mix(vec3(0.4,0.9,1.0), vec3(1.0),   (t-0.80)*5.0);
+  if (u_palette == 1) {
+    if (t<.25) return mix(vec3(0),vec3(0,.05,.3),t*4.);
+    if (t<.55) return mix(vec3(0,.05,.3),vec3(0,.5,.9),(t-.25)*3.33);
+    if (t<.80) return mix(vec3(0,.5,.9),vec3(.4,.9,1.),(t-.55)*4.);
+    return mix(vec3(.4,.9,1.),vec3(1.),(t-.80)*5.);
   }
-  if (u_palette == 2) { // Psychedelic
-    return vec3(
-      0.5+0.5*cos(6.2832*(1.0*t+0.00)),
-      0.5+0.5*cos(6.2832*(0.7*t+0.33)),
-      0.5+0.5*cos(6.2832*(1.3*t+0.67))
-    );
-  }
-  if (u_palette == 3) { // B&W
-    return vec3(t < 0.5 ? t*2.0 : 2.0-t*2.0);
-  }
-  if (u_palette == 4) { // Smooth Rainbow
-    return hsv(t, 0.92, 0.98);
-  }
-  // Neon Electric (5)
+  if (u_palette == 2) return vec3(
+    .5+.5*cos(6.2832*(1.0*t+.00)),
+    .5+.5*cos(6.2832*(.7*t+.33)),
+    .5+.5*cos(6.2832*(1.3*t+.67)));
+  if (u_palette == 3) { float v=t<.5?t*2.:2.-t*2.; return vec3(v); }
+  if (u_palette == 4) return hsv(t,.92,.98);
   return vec3(
-    0.5+0.5*sin(6.2832*t*2.1+0.0),
-    0.5+0.5*sin(6.2832*t*1.7+2.0),
-    0.5+0.5*sin(6.2832*t*3.0+4.5)
-  );
+    .5+.5*sin(6.2832*t*2.1+.0),
+    .5+.5*sin(6.2832*t*1.7+2.),
+    .5+.5*sin(6.2832*t*3.0+4.5));
 }
 
-// ── Smooth coloring ───────────────────────────────────────────
-float smooth_t(float iter, float maxF, float logSqZ) {
-  // normalized + log smooth
-  float mu = iter + 1.0 - log2(log2(logSqZ));
-  return mu * 0.045;   // scale to get nice cycle density
+// ── Smooth iteration coloring ──────────────────────────────────
+float smooth_t(float iter, float logSqZ) {
+  return (iter + 1.0 - log2(log2(logSqZ))) * 0.045;
 }
 
-// ── Complex multiply (single precision, for Newton) ───────────
+// ── Complex ops (single-precision, for Newton) ────────────────
 vec2 cmul(vec2 a, vec2 b) { return vec2(a.x*b.x-a.y*b.y, a.x*b.y+a.y*b.x); }
 vec2 cdiv(vec2 a, vec2 b) {
   float d = dot(b,b);
-  return vec2(dot(a,b), a.y*b.x-a.x*b.y) / d;
+  return vec2(dot(a,b), a.y*b.x-a.x*b.y)/d;
 }
 
-// ── Fractal kernels ───────────────────────────────────────────
+// ── Main fractal function ──────────────────────────────────────
 vec4 fractal(vec2 dfX, vec2 dfY) {
   float maxF = float(u_maxIter);
-
-  // Extract working floats from double center
-  // For the iteration we use single precision floats derived from the df coords.
-  // The starting value is exact (0 for Mandelbrot, pixel-coord for Julia).
   float cx = dfX.x + dfX.y;
   float cy = dfY.x + dfY.y;
+  bool de   = (u_colorMode == 1);
+  bool trap = (u_colorMode == 2);
+  bool inte = (u_colorMode == 3);
 
-  // ── Mandelbrot & Julia (same loop, different init) ────────
+  // ── Mandelbrot & Julia ────────────────────────────────────
   if (u_type == 0 || u_type == 1) {
-    vec2 z, c;
-    if (u_type == 0) { z = vec2(0.0); c = vec2(cx, cy); }
-    else             { z = vec2(cx, cy); c = u_jc; }
+    vec2 zrdf = (u_type==0) ? df_f(0.) : dfX;
+    vec2 zidf = (u_type==0) ? df_f(0.) : dfY;
+    vec2 crdf = (u_type==0) ? dfX : df_f(u_jc.x);
+    vec2 cidf = (u_type==0) ? dfY : df_f(u_jc.y);
 
-    // Use double-float for z to improve deep-zoom quality
-    vec2 zrdf = (u_type == 0) ? df_f(0.0) : dfX;
-    vec2 zidf = (u_type == 0) ? df_f(0.0) : dfY;
-    vec2 crdf = (u_type == 0) ? dfX : df_f(u_jc.x);
-    vec2 cidf = (u_type == 0) ? dfY : df_f(u_jc.y);
+    // Distance-estimation derivative (single-prec, starts at dz=1+0i for both types)
+    vec2 dzr = vec2(1.,0.), dzi = vec2(0.,0.);
+    float trapMin = 1e10;
 
-    float iter = 0.0;
     for (int i = 0; i < 2000; i++) {
       if (i >= u_maxIter) break;
-      // z = z^2 + c  using double-float
+
+      float zrF = zrdf.x + zrdf.y;
+      float ziF = zidf.x + zidf.y;
+
+      // Orbit trap: cross trap (min of |Re(z)| and |Im(z)|)
+      if (trap) trapMin = min(trapMin, min(abs(zrF), abs(ziF)));
+
+      // DE: dz_{n+1} = 2*z_n*dz_n + (1 for Mandelbrot, 0 for Julia)
+      // dz is kept as two floats (dzr, dzi) for real/imag parts
+      if (de) {
+        float dr = 2.0*(zrF*dzr.x - ziF*dzi.x) + (u_type==0 ? 1.0 : 0.0);
+        float di = 2.0*(zrF*dzi.x + ziF*dzr.x);
+        dzr = vec2(dr, 0.); dzi = vec2(di, 0.);
+      }
+
+      // z = z² + c  (double-float)
       vec2 zr2 = df_sub(df_sqr(zrdf), df_sqr(zidf));
-      vec2 zi2 = df_add(df_mul(df_f(2.0), df_mul(zrdf, zidf)), cidf);
+      vec2 zi2 = df_add(df_mul(df_f(2.), df_mul(zrdf, zidf)), cidf);
       zrdf = df_add(zr2, crdf);
       zidf = zi2;
 
-      // Check escape with single-precision magnitude
-      float zrF = zrdf.x + zrdf.y;
-      float ziF = zidf.x + zidf.y;
+      zrF = zrdf.x + zrdf.y;
+      ziF = zidf.x + zidf.y;
       float mag2 = zrF*zrF + ziF*ziF;
+
       if (mag2 > 65536.0) {
-        float logSqZ = log2(mag2);
-        float t = smooth_t(float(i), maxF, logSqZ);
-        return vec4(palette(t), 1.0);
+        if (de) {
+          float r = sqrt(mag2);
+          float dzLen = max(length(vec2(dzr.x, dzi.x)), 1e-10);
+          float dist = 0.5 * r * log(r) / dzLen;
+          // Normalize to pixel units; glow = 1 at boundary
+          float glow = exp(-dist / u_invZoom * 0.18);
+          vec3 col = palette(smooth_t(float(i), log2(mag2)));
+          return vec4(col * (0.1 + 0.9*glow) + vec3(glow*0.15), 1.0);
+        }
+        if (trap) {
+          float t = exp(-trapMin * 6.0);
+          return vec4(palette(t), 1.0);
+        }
+        return vec4(palette(smooth_t(float(i), log2(mag2))), 1.0);
       }
-      iter = float(i);
     }
+    // Did not escape
+    if (inte) {
+      float zrF = zrdf.x + zrdf.y, ziF = zidf.x + zidf.y;
+      float ang = atan(ziF, zrF) / 6.28318 + 0.5;
+      float mag = length(vec2(zrF, ziF));
+      return vec4(palette(ang + mag * 0.08) * 0.65, 1.0);
+    }
+    if (trap) {
+      float t = exp(-trapMin * 6.0);
+      return vec4(palette(t) * 0.35, 1.0);
+    }
+    if (de) return vec4(0., 0., 0.02, 1.0);
     return vec4(0.0, 0.0, 0.0, 1.0);
   }
 
-  // ── Burning Ship ─────────────────────────────────────────
+  // ── Burning Ship ──────────────────────────────────────────
+  // Note: DE for Burning Ship is an APPROXIMATION. The abs() operation
+  // creates cusps where the derivative is discontinuous, so results near
+  // fold lines may show artifacts. The computation still produces
+  // visually interesting boundary detection despite the approximation.
   if (u_type == 2) {
-    vec2 zrdf = df_f(0.0);
-    vec2 zidf = df_f(0.0);
+    vec2 zrdf = df_f(0.), zidf = df_f(0.);
+    float dzrx = 1., dzix = 0.;  // derivative (approx, single-prec)
+    float trapMin = 1e10;
 
     for (int i = 0; i < 2000; i++) {
       if (i >= u_maxIter) break;
-      float zrF = abs(zrdf.x + zrdf.y);
-      float ziF = abs(zidf.x + zidf.y);
-      zrdf = df_f(zrF);
-      zidf = df_f(ziF);
 
-      vec2 newZr = df_add(df_sub(df_sqr(zrdf), df_sqr(zidf)), dfX);
-      vec2 newZi = df_add(df_mul(df_f(2.0), df_mul(zrdf, zidf)), dfY);
-      zrdf = newZr; zidf = newZi;
+      float zrA = abs(zrdf.x + zrdf.y);
+      float ziA = abs(zidf.x + zidf.y);
 
-      float mag2 = zrF*zrF + ziF*ziF;
-      if (mag2 > 65536.0) {
-        float t = smooth_t(float(i), maxF, log2(mag2));
-        return vec4(palette(t), 1.0);
+      if (trap) trapMin = min(trapMin, min(zrA, ziA));
+
+      // Approx DE: ignore sign discontinuities from abs (documented limitation)
+      if (de) {
+        float dr = 2.0*(zrA*dzrx - ziA*dzix) + 1.0;
+        float di = 2.0*(zrA*dzix + ziA*dzrx);
+        dzrx = dr; dzix = di;
       }
+
+      // z = (|Re z| + i|Im z|)^2 + c  (single-prec sq, double-prec +c)
+      float nzr = zrA*zrA - ziA*ziA;
+      float nzi = 2.0*zrA*ziA;
+      zrdf = df_add(df_f(nzr), dfX);
+      zidf = df_add(df_f(nzi), dfY);
+
+      float nzrF = zrdf.x + zrdf.y, nziF = zidf.x + zidf.y;
+      float mag2 = nzrF*nzrF + nziF*nziF;
+
+      if (mag2 > 65536.0) {
+        if (de) {
+          float r = sqrt(mag2);
+          float dzLen = max(sqrt(dzrx*dzrx + dzix*dzix), 1e-10);
+          float dist = 0.5 * r * log(r) / dzLen;
+          float glow = exp(-dist / u_invZoom * 0.18);
+          vec3 col = palette(smooth_t(float(i), log2(mag2)));
+          return vec4(col * (0.1 + 0.9*glow) + vec3(glow*0.15), 1.0);
+        }
+        if (trap) {
+          float t = exp(-trapMin * 6.0);
+          return vec4(palette(t), 1.0);
+        }
+        return vec4(palette(smooth_t(float(i), log2(mag2))), 1.0);
+      }
+    }
+    if (trap) {
+      float t = exp(-trapMin * 6.0);
+      return vec4(palette(t) * 0.3, 1.0);
     }
     return vec4(0.0, 0.0, 0.0, 1.0);
   }
 
-  // ── Newton (z³ − 1 = 0) ──────────────────────────────────
+  // ── Newton (z³ − 1 = 0) ───────────────────────────────────
+  // DE is not applicable to Newton (no escape condition).
+  // Orbit trap here tracks proximity to the three roots.
   if (u_type == 3) {
     vec2 z = vec2(cx, cy);
     const vec2 r0 = vec2(1.0, 0.0);
     const vec2 r1 = vec2(-0.5,  0.8660254);
     const vec2 r2 = vec2(-0.5, -0.8660254);
+    float trapMin = 1e10;
 
     for (int i = 0; i < 2000; i++) {
       if (i >= u_maxIter) break;
-      vec2 z2 = cmul(z, z);
-      vec2 z3 = cmul(z2, z);
-      // f(z)=z³-1, f'(z)=3z²
-      vec2 fz  = z3 - vec2(1.0, 0.0);
-      vec2 fpz = vec2(3.0,0.0) * z2;
-      vec2 dz  = cdiv(fz, fpz);
-      z -= dz;
+      if (trap) {
+        float d0=length(z-r0), d1=length(z-r1), d2=length(z-r2);
+        trapMin = min(trapMin, min(d0,min(d1,d2)));
+      }
+      vec2 z2=cmul(z,z), z3=cmul(z2,z);
+      vec2 fz  = z3 - vec2(1.,0.);
+      vec2 fpz = vec2(3.,0.) * z2;
+      z -= cdiv(fz, fpz);
 
-      float eps = 1e-6;
-      float d0 = dot(z-r0, z-r0);
-      float d1 = dot(z-r1, z-r1);
-      float d2 = dot(z-r2, z-r2);
-      float minD = min(d0, min(d1, d2));
-      if (minD < eps*eps) {
-        float bright = 1.0 - float(i)/maxF;
-        bright = pow(bright, 0.4);
-        if (d0 < d1 && d0 < d2) return vec4(0.2+0.8*bright, 0.4*bright, 0.8*bright, 1.0); // blue root
-        if (d1 < d2)            return vec4(0.8*bright, 0.2+0.8*bright, 0.2*bright, 1.0); // green root
-        return vec4(0.9*bright, 0.3*bright, 0.2+0.7*bright, 1.0); // red root
+      float d0=dot(z-r0,z-r0), d1=dot(z-r1,z-r1), d2=dot(z-r2,z-r2);
+      if (min(d0,min(d1,d2)) < 1e-12) {
+        float bright = pow(1.0 - float(i)/maxF, 0.4);
+        if (trap) {
+          // Blend root color with orbit trap brightness
+          float tb = exp(-trapMin * 8.0);
+          vec3 rc = d0<d1&&d0<d2 ? vec3(.1,.3,.9) : d1<d2 ? vec3(.1,.8,.2) : vec3(.9,.2,.1);
+          return vec4(rc * (tb*0.5 + 0.5) * (0.3 + 0.7*bright), 1.0);
+        }
+        if (d0<d1&&d0<d2) return vec4(.2+.8*bright, .4*bright,  .8*bright, 1.0);
+        if (d1<d2)        return vec4(.8*bright, .2+.8*bright,  .2*bright, 1.0);
+        return             vec4(.9*bright, .3*bright, .2+.7*bright, 1.0);
       }
     }
-    return vec4(0.0, 0.0, 0.0, 1.0);
+    return vec4(0.,0.,0.,1.);
   }
 
-  return vec4(0.0);
+  return vec4(0.);
 }
 
-// ── Main ─────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────
 void main() {
   vec2 fc = gl_FragCoord.xy;
-
   if (u_aa) {
-    // 2×2 supersampling (4 samples per pixel, offset by 0.25/0.75)
-    vec4 col = vec4(0.0);
-    for (int dy = 0; dy < 2; dy++) {
-      for (int dx = 0; dx < 2; dx++) {
-        vec2 sc = fc + vec2(float(dx)*0.5-0.25, float(dy)*0.5-0.25);
-        float ox = sc.x - u_res.x*0.5;
-        float oy = sc.y - u_res.y*0.5;
-        vec2 dfX = df_add(u_cx, df_f(ox * u_invZoom));
-        vec2 dfY = df_add(u_cy, df_f(oy * u_invZoom));
-        col += fractal(dfX, dfY);
-      }
+    vec4 col = vec4(0.);
+    for (int dy=0; dy<2; dy++) for (int dx=0; dx<2; dx++) {
+      vec2 sc = fc + vec2(float(dx)*.5-.25, float(dy)*.5-.25);
+      float ox = sc.x - u_res.x*.5, oy = sc.y - u_res.y*.5;
+      col += fractal(df_add(u_cx,df_f(ox*u_invZoom)), df_add(u_cy,df_f(oy*u_invZoom)));
     }
     fragColor = col * 0.25;
   } else {
-    float ox = fc.x - u_res.x*0.5;
-    float oy = fc.y - u_res.y*0.5;
-    vec2 dfX = df_add(u_cx, df_f(ox * u_invZoom));
-    vec2 dfY = df_add(u_cy, df_f(oy * u_invZoom));
-    fragColor = fractal(dfX, dfY);
+    float ox = fc.x - u_res.x*.5, oy = fc.y - u_res.y*.5;
+    fragColor = fractal(df_add(u_cx,df_f(ox*u_invZoom)), df_add(u_cy,df_f(oy*u_invZoom)));
   }
 }`;
 
-// ══════════════════════════════════════════════════════
-//  WebGL SETUP
-// ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+//  WEBGL SETUP
+// ══════════════════════════════════════════════════════════════
 const canvas = document.getElementById('canvas');
 const gl = canvas.getContext('webgl2', { antialias: false, preserveDrawingBuffer: true });
-if (!gl) { document.body.innerHTML = '<p style="color:#fff;padding:40px">WebGL 2 is required. Please use a modern browser.</p>'; throw 0; }
+if (!gl) {
+  document.body.innerHTML = '<p style="color:#fff;padding:40px;font-family:monospace">WebGL 2 is required. Please use a modern browser (Chrome/Firefox/Edge/Safari 15+).</p>';
+  throw 0;
+}
 
 function compileShader(src, type) {
   const sh = gl.createShader(type);
   gl.shaderSource(sh, src);
   gl.compileShader(sh);
   if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS))
-    throw new Error(gl.getShaderInfoLog(sh));
+    throw new Error('Shader compile error:\n' + gl.getShaderInfoLog(sh));
   return sh;
 }
 
@@ -574,44 +918,45 @@ function buildProgram(vsrc, fsrc) {
   gl.attachShader(prog, compileShader(fsrc, gl.FRAGMENT_SHADER));
   gl.linkProgram(prog);
   if (!gl.getProgramParameter(prog, gl.LINK_STATUS))
-    throw new Error(gl.getProgramInfoLog(prog));
+    throw new Error('Program link error:\n' + gl.getProgramInfoLog(prog));
   return prog;
 }
 
-const prog = buildProgram(VERT_SRC, FRAG_SRC);
+let prog;
+try {
+  prog = buildProgram(VERT_SRC, FRAG_SRC);
+} catch (err) {
+  document.body.innerHTML = `<pre style="color:#f88;padding:24px;font-size:12px;font-family:monospace">${err.message}</pre>`;
+  throw err;
+}
 
 // Full-screen quad
 const vao = gl.createVertexArray();
 gl.bindVertexArray(vao);
 const buf = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]), gl.STATIC_DRAW);
 const aPos = gl.getAttribLocation(prog, 'a_pos');
 gl.enableVertexAttribArray(aPos);
 gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 gl.bindVertexArray(null);
 
-// Cache uniforms
+// Uniform cache
 const U = {};
-['u_res','u_cx','u_cy','u_invZoom','u_type','u_jc','u_maxIter','u_palette','u_colorOff','u_aa']
+['u_res','u_cx','u_cy','u_invZoom','u_type','u_jc','u_maxIter','u_palette','u_colorOff','u_aa','u_colorMode']
   .forEach(n => U[n] = gl.getUniformLocation(prog, n));
 
-// ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
 //  STATE
-// ══════════════════════════════════════════════════════
-// Double-float helper: JS double → [hi, lo] float pair
-function splitDbl(v) {
-  const hi = Math.fround(v);
-  return [hi, v - hi];
-}
+// ══════════════════════════════════════════════════════════════
+function splitDbl(v) { const hi = Math.fround(v); return [hi, v - hi]; }
 
 const DEFAULTS = [
-  { cx: -0.5,    cy: 0.0,   zoom: 300 },  // Mandelbrot
-  { cx:  0.0,    cy: 0.0,   zoom: 300 },  // Julia
-  { cx: -0.5,    cy: -0.5,  zoom: 280 },  // Burning Ship
-  { cx:  0.0,    cy: 0.0,   zoom: 200 },  // Newton
+  { cx: -0.5,   cy:  0.0,  zoom: 300 },  // Mandelbrot
+  { cx:  0.0,   cy:  0.0,  zoom: 300 },  // Julia
+  { cx: -0.5,   cy: -0.5,  zoom: 280 },  // Burning Ship
+  { cx:  0.0,   cy:  0.0,  zoom: 200 },  // Newton
 ];
-
 const FRACTAL_NAMES = ['Mandelbrot','Julia Set','Burning Ship','Newton'];
 
 const state = {
@@ -622,28 +967,56 @@ const state = {
   palette: 4,
   colorOff: 0.0,
   aa: false,
+  colorMode: 0,
   animating: false,
+  showFPS: false,
 };
 
-// ── Read URL params ───────────────────────────────────
+// ── localStorage preferences ──────────────────────────────────
+const PREFS_KEY = 'fractalExplorerPrefs';
+function loadPrefs() {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    if (!raw) return;
+    const p = JSON.parse(raw);
+    if (p.palette   != null) state.palette   = +p.palette;
+    if (p.aa        != null) state.aa        = !!p.aa;
+    if (p.colorMode != null) state.colorMode = +p.colorMode;
+    if (p.maxIter   != null) state.maxIter   = +p.maxIter;
+    if (p.colorOff  != null) state.colorOff  = +p.colorOff;
+    if (p.showFPS   != null) state.showFPS   = !!p.showFPS;
+  } catch (_) {}
+}
+function savePrefs() {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({
+      palette: state.palette, aa: state.aa, colorMode: state.colorMode,
+      maxIter: state.maxIter, colorOff: state.colorOff, showFPS: state.showFPS,
+    }));
+  } catch (_) {}
+}
+
+// ── URL params ────────────────────────────────────────────────
 function readURL() {
   const p = new URLSearchParams(location.search);
-  if (p.has('cx'))   state.cx      = parseFloat(p.get('cx'));
-  if (p.has('cy'))   state.cy      = parseFloat(p.get('cy'));
-  if (p.has('zoom')) state.zoom    = parseFloat(p.get('zoom'));
-  if (p.has('type')) state.type    = parseInt(p.get('type'));
-  if (p.has('jcre')) state.jcre    = parseFloat(p.get('jcre'));
-  if (p.has('jcim')) state.jcim    = parseFloat(p.get('jcim'));
-  if (p.has('iter')) state.maxIter = parseInt(p.get('iter'));
-  if (p.has('pal'))  state.palette = parseInt(p.get('pal'));
-  if (p.has('coff')) state.colorOff= parseFloat(p.get('coff'));
-  if (p.has('aa'))   state.aa      = p.get('aa') === '1';
+  if (p.has('cx'))    state.cx        = parseFloat(p.get('cx'));
+  if (p.has('cy'))    state.cy        = parseFloat(p.get('cy'));
+  if (p.has('zoom'))  state.zoom      = parseFloat(p.get('zoom'));
+  if (p.has('type'))  state.type      = parseInt(p.get('type'));
+  if (p.has('jcre'))  state.jcre      = parseFloat(p.get('jcre'));
+  if (p.has('jcim'))  state.jcim      = parseFloat(p.get('jcim'));
+  if (p.has('iter'))  state.maxIter   = parseInt(p.get('iter'));
+  if (p.has('pal'))   state.palette   = parseInt(p.get('pal'));
+  if (p.has('coff'))  state.colorOff  = parseFloat(p.get('coff'));
+  if (p.has('aa'))    state.aa        = p.get('aa') === '1';
+  if (p.has('cm'))    state.colorMode = parseInt(p.get('cm'));
 }
+loadPrefs();  // load prefs first; URL params override below
 readURL();
 
-// ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
 //  RENDER
-// ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
 let needsRender = true;
 function schedRender() { needsRender = true; }
 
@@ -656,43 +1029,37 @@ function resizeCanvas() {
 }
 
 function render(W, H, s) {
-  // s = state override for screenshot
   const st = s || state;
   const w = W || canvas.width;
   const h = H || canvas.height;
-
-  gl.useProgram(prog);
-  gl.bindVertexArray(vao);
-
   const [cxhi, cxlo] = splitDbl(st.cx);
   const [cyhi, cylo] = splitDbl(st.cy);
 
-  gl.uniform2f(U.u_res, w, h);
-  gl.uniform2f(U.u_cx, cxhi, cxlo);
-  gl.uniform2f(U.u_cy, cyhi, cylo);
-  gl.uniform1f(U.u_invZoom, 1.0 / st.zoom);
-  gl.uniform1i(U.u_type, st.type);
-  gl.uniform2f(U.u_jc, st.jcre, st.jcim);
-  gl.uniform1i(U.u_maxIter, st.maxIter);
-  gl.uniform1i(U.u_palette, st.palette);
-  gl.uniform1f(U.u_colorOff, st.colorOff);
-  gl.uniform1i(U.u_aa, st.aa ? 1 : 0);
-
+  gl.useProgram(prog);
+  gl.bindVertexArray(vao);
+  gl.uniform2f(U.u_res,       w, h);
+  gl.uniform2f(U.u_cx,        cxhi, cxlo);
+  gl.uniform2f(U.u_cy,        cyhi, cylo);
+  gl.uniform1f(U.u_invZoom,   1.0 / st.zoom);
+  gl.uniform1i(U.u_type,      st.type);
+  gl.uniform2f(U.u_jc,        st.jcre, st.jcim);
+  gl.uniform1i(U.u_maxIter,   st.maxIter);
+  gl.uniform1i(U.u_palette,   st.palette);
+  gl.uniform1f(U.u_colorOff,  st.colorOff);
+  gl.uniform1i(U.u_aa,        st.aa ? 1 : 0);
+  gl.uniform1i(U.u_colorMode, st.colorMode);
   gl.drawArrays(gl.TRIANGLES, 0, 6);
   gl.bindVertexArray(null);
 }
 
-// ══════════════════════════════════════════════════════
-//  SCREENSHOT (render to framebuffer at N× resolution)
-// ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+//  SCREENSHOT (render to offscreen framebuffer at N×)
+// ══════════════════════════════════════════════════════════════
 function takeShot(scale) {
-  const W = Math.round(canvas.clientWidth  * window.devicePixelRatio * scale);
-  const H = Math.round(canvas.clientHeight * window.devicePixelRatio * scale);
-
-  // Save the state override and boost AA for screenshot
+  const W = Math.round(canvas.clientWidth  * (window.devicePixelRatio || 1) * scale);
+  const H = Math.round(canvas.clientHeight * (window.devicePixelRatio || 1) * scale);
   const snapState = Object.assign({}, state, { aa: true });
 
-  // Framebuffer + texture
   const tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
@@ -701,29 +1068,26 @@ function takeShot(scale) {
   const fb = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-
   gl.viewport(0, 0, W, H);
   render(W, H, snapState);
 
   const pixels = new Uint8Array(W * H * 4);
   gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.deleteFramebuffer(fb);
   gl.deleteTexture(tex);
 
-  // Flip Y (WebGL reads bottom-up)
+  // Flip Y
   const flipped = new Uint8ClampedArray(W * H * 4);
   for (let y = 0; y < H; y++) {
-    const srcRow = (H - 1 - y) * W * 4;
-    flipped.set(pixels.subarray(srcRow, srcRow + W * 4), y * W * 4);
+    const sr = (H-1-y)*W*4;
+    flipped.set(pixels.subarray(sr, sr+W*4), y*W*4);
   }
-
-  const offscreen = document.createElement('canvas');
-  offscreen.width = W; offscreen.height = H;
-  offscreen.getContext('2d').putImageData(new ImageData(flipped, W, H), 0, 0);
-  offscreen.toBlob(blob => {
+  const oc = document.createElement('canvas');
+  oc.width = W; oc.height = H;
+  oc.getContext('2d').putImageData(new ImageData(flipped, W, H), 0, 0);
+  oc.toBlob(blob => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `fractal_${FRACTAL_NAMES[state.type].toLowerCase().replace(' ','_')}_${scale}x.png`;
@@ -732,21 +1096,37 @@ function takeShot(scale) {
   });
 }
 
-// ══════════════════════════════════════════════════════
-//  ANIMATION LOOP
-// ══════════════════════════════════════════════════════
-function loop() {
+// ══════════════════════════════════════════════════════════════
+//  FPS TRACKING
+// ══════════════════════════════════════════════════════════════
+let fpsFrameCount = 0, fpsLastTs = 0, fpsVal = 0;
+function updateFPS(ts) {
+  fpsFrameCount++;
+  if (ts - fpsLastTs >= 1000) {
+    fpsVal = Math.round(fpsFrameCount * 1000 / (ts - fpsLastTs));
+    fpsFrameCount = 0;
+    fpsLastTs = ts;
+    const el = document.getElementById('ovFPS');
+    if (state.showFPS) el.textContent = fpsVal + ' fps';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MAIN ANIMATION LOOP
+// ══════════════════════════════════════════════════════════════
+function loop(ts) {
   if (needsRender) {
     needsRender = false;
     render();
     updateOverlay();
   }
+  updateFPS(ts);
   requestAnimationFrame(loop);
 }
 
-// ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
 //  INTRO ANIMATION  (zoom into Seahorse Valley)
-// ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
 const INTRO_TARGET = { cx: -0.7436438870371587, cy: 0.13182590420531207, zoom: 4500 };
 let introStart = null;
 const INTRO_DUR = 5200;
@@ -754,30 +1134,272 @@ const INTRO_DUR = 5200;
 function runIntro(ts) {
   if (!introStart) introStart = ts;
   const t = Math.min((ts - introStart) / INTRO_DUR, 1.0);
-  // Smooth-step ease
-  const e = t * t * (3.0 - 2.0 * t);
-
-  state.cx   = -0.5 + (INTRO_TARGET.cx - (-0.5)) * e;
-  state.cy   =  0.0 + (INTRO_TARGET.cy -   0.0 ) * e;
-  state.zoom = 300  * Math.pow(INTRO_TARGET.zoom / 300, e);
+  const e = t * t * (3.0 - 2.0 * t);  // smooth-step
+  state.cx   = -0.5  + (INTRO_TARGET.cx   - (-0.5)) * e;
+  state.cy   =  0.0  + (INTRO_TARGET.cy   -   0.0 ) * e;
+  state.zoom =  300  * Math.pow(INTRO_TARGET.zoom / 300, e);
   schedRender();
-
-  if (t < 1.0) {
-    requestAnimationFrame(runIntro);
-  } else {
+  if (t < 1.0) requestAnimationFrame(runIntro);
+  else {
     state.animating = false;
-    const intro = document.getElementById('intro');
-    intro.classList.add('hidden');
-    setTimeout(() => intro.remove(), 1200);
+    hideIntro();
   }
 }
 
-// ══════════════════════════════════════════════════════
+function hideIntro() {
+  const intro = document.getElementById('intro');
+  if (intro) { intro.classList.add('hidden'); setTimeout(() => intro.remove(), 1200); }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TOUR SYSTEM
+// ══════════════════════════════════════════════════════════════
+const TOUR_STOPS = [
+  {
+    name: 'Seahorse Valley',
+    desc: 'Intricate spiral arms of the Mandelbrot set resembling seahorse tails.',
+    cx: -0.7436438870371587, cy: 0.13182590420531207, zoom: 4500,
+    type: 0, thumb: 't0',
+    tag: 'Mandelbrot', tagClass: 'tag-mandelbrot',
+  },
+  {
+    name: 'Elephant Valley',
+    desc: 'Large circular bulbs reminiscent of elephant heads marching in a line.',
+    cx: 0.275, cy: 0.006, zoom: 1800,
+    type: 0, thumb: 't1',
+    tag: 'Mandelbrot', tagClass: 'tag-mandelbrot',
+  },
+  {
+    name: 'Triple Spiral Valley',
+    desc: 'Three spirals interleave in a hypnotic dance near the main antenna.',
+    cx: -0.088, cy: 0.654, zoom: 1600,
+    type: 0, thumb: 't2',
+    tag: 'Mandelbrot', tagClass: 'tag-mandelbrot',
+  },
+  {
+    name: 'Mini Mandelbrot',
+    desc: 'A perfect miniature copy of the entire Mandelbrot set embedded deep within it.',
+    cx: -1.75, cy: 0.0, zoom: 600,
+    type: 0, thumb: 't3',
+    tag: 'Mandelbrot', tagClass: 'tag-mandelbrot',
+  },
+  {
+    name: 'Julia Dragon',
+    desc: 'With c = −0.8 + 0.156i, Julia\'s orbit draws a fire-breathing dragon.',
+    cx: 0.0, cy: 0.0, zoom: 300, jcre: -0.8, jcim: 0.156,
+    type: 1, thumb: 't4',
+    tag: 'Julia', tagClass: 'tag-julia',
+  },
+  {
+    name: 'Julia Dendrite',
+    desc: 'At c = i, the Julia set becomes a perfectly symmetric fractal snowflake.',
+    cx: 0.0, cy: 0.0, zoom: 300, jcre: 0.0, jcim: 1.0,
+    type: 1, thumb: 't5',
+    tag: 'Julia', tagClass: 'tag-julia',
+  },
+  {
+    name: 'Burning Ship Mast',
+    desc: 'The towering "mast" structure of the Burning Ship fractal, richly detailed.',
+    cx: -1.775, cy: -0.005, zoom: 1400,
+    type: 2, thumb: 't6',
+    tag: 'Burning Ship', tagClass: 'tag-burning',
+  },
+  {
+    name: 'Newton Classic',
+    desc: 'Newton\'s method on z³−1 creates three interleaved color basins converging to the cube roots of unity.',
+    cx: 0.0, cy: 0.0, zoom: 200,
+    type: 3, thumb: 't7',
+    tag: 'Newton', tagClass: 'tag-newton',
+  },
+];
+
+let tourOpen = false;
+let activeCardIdx = -1;
+
+function buildTourCards() {
+  const container = document.getElementById('tourCards');
+  TOUR_STOPS.forEach((stop, i) => {
+    const card = document.createElement('div');
+    card.className = 'tour-card';
+    card.innerHTML = `
+      <div class="tour-thumb ${stop.thumb}"></div>
+      <div class="tour-card-body">
+        <div class="tour-name">${stop.name}</div>
+        <div class="tour-desc">${stop.desc}</div>
+        <span class="tour-tag ${stop.tagClass}">${stop.tag}</span>
+      </div>`;
+    card.addEventListener('click', () => navigateToStop(i));
+    container.appendChild(card);
+  });
+}
+
+function setActiveCard(idx) {
+  const cards = document.querySelectorAll('.tour-card');
+  cards.forEach((c, i) => c.classList.toggle('active', i === idx));
+  activeCardIdx = idx;
+}
+
+function toggleTour() {
+  tourOpen = !tourOpen;
+  document.getElementById('tourPanel').classList.toggle('open', tourOpen);
+  document.getElementById('btnHelp').classList.toggle('shifted', tourOpen);
+  document.getElementById('btnTour').classList.toggle('active', tourOpen);
+}
+
+function navigateToStop(idx) {
+  const stop = TOUR_STOPS[idx];
+  setActiveCard(idx);
+
+  // Switch fractal type (and Julia c) immediately, then animate position
+  if (stop.type !== state.type) {
+    state.type = stop.type;
+    document.getElementById('fractalSelect').value = state.type;
+    document.getElementById('juliaControls').style.display = state.type === 1 ? 'block' : 'none';
+    schedRender();
+  }
+  if (stop.jcre != null) { state.jcre = stop.jcre; state.jcim = stop.jcim; syncJuliaSliders(); }
+
+  animateTo({ cx: stop.cx, cy: stop.cy, zoom: stop.zoom }, 4000);
+}
+
+// Animated fly-to: cubic ease-in-out + log zoom interpolation
+function animateTo(target, durationMs) {
+  state.animating = true;
+  const t0cx = state.cx, t0cy = state.cy, t0zoom = state.zoom;
+  const startTs = performance.now();
+
+  function step(ts) {
+    if (!state.animating) return;
+    const raw = Math.min((ts - startTs) / durationMs, 1.0);
+    // Cubic ease-in-out
+    const e = raw < 0.5
+      ? 4 * raw * raw * raw
+      : 1 - Math.pow(-2 * raw + 2, 3) / 2;
+
+    state.cx   = t0cx   + (target.cx   - t0cx  ) * e;
+    state.cy   = t0cy   + (target.cy   - t0cy  ) * e;
+    state.zoom = t0zoom * Math.pow(target.zoom / t0zoom, e);
+    schedRender();
+
+    if (raw < 1.0) requestAnimationFrame(step);
+    else           state.animating = false;
+  }
+  requestAnimationFrame(step);
+}
+
+function cancelAnimation() {
+  state.animating = false;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  VIDEO RECORDING
+// ══════════════════════════════════════════════════════════════
+let recording = false;
+let mediaRecorder = null;
+let recChunks = [];
+
+function openRecordModal() {
+  document.getElementById('recordModal').classList.add('open');
+  document.getElementById('recStartBtn').style.display = '';
+  document.getElementById('recCancelBtn').style.display = 'none';
+  document.getElementById('recordProgress').style.display = 'none';
+  document.getElementById('recordStatus').style.display = 'none';
+}
+function closeRecordModal() {
+  if (!recording) document.getElementById('recordModal').classList.remove('open');
+}
+
+function startRecording() {
+  if (!canvas.captureStream) {
+    alert('canvas.captureStream() is not supported in this browser. Try Chrome or Edge.');
+    return;
+  }
+  const exp      = parseFloat(document.getElementById('recExp').value);
+  const duration = parseInt(document.getElementById('recDur').value);
+  const zoomMult = Math.pow(10, exp);
+  const startZoom = state.zoom;
+  const targetZoom = startZoom * zoomMult;
+
+  // Disable controls
+  recording = true;
+  state.animating = true;
+  document.querySelectorAll('#controls button, #controls select, #controls input').forEach(el => el.disabled = true);
+  document.getElementById('recStartBtn').style.display = 'none';
+  document.getElementById('recCancelBtn').style.display = '';
+  document.getElementById('recordProgress').style.display = 'block';
+  document.getElementById('recordStatus').style.display = 'block';
+  document.getElementById('videoBar').style.display = 'block';
+
+  // Start capture stream
+  const stream = canvas.captureStream(30);
+  const mimeTypes = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'];
+  let mime = '';
+  for (const m of mimeTypes) { if (MediaRecorder.isTypeSupported(m)) { mime = m; break; } }
+
+  recChunks = [];
+  try {
+    mediaRecorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+  } catch (e) {
+    mediaRecorder = new MediaRecorder(stream);
+  }
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
+  mediaRecorder.onstop = () => {
+    if (recChunks.length === 0) return;
+    const blob = new Blob(recChunks, { type: mime || 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `fractal_zoom_${Date.now()}.webm`;
+    a.click();
+    URL.revokeObjectURL(url);
+    finishRecording();
+  };
+  mediaRecorder.start(100);
+
+  const startMs = performance.now();
+  const durMs   = duration * 1000;
+
+  function recFrame(ts) {
+    if (!recording) { mediaRecorder.stop(); return; }
+    const progress = Math.min((ts - startMs) / durMs, 1.0);
+    const e = progress * progress * (3 - 2 * progress);  // smoothstep
+    state.zoom = startZoom * Math.pow(zoomMult, e);
+    needsRender = true;  // force render each frame
+    updateProgress(progress);
+
+    if (progress < 1.0) requestAnimationFrame(recFrame);
+    else { mediaRecorder.stop(); }  // onstop fires finishRecording
+  }
+  requestAnimationFrame(recFrame);
+}
+
+function updateProgress(p) {
+  document.getElementById('recordProgressFill').style.width = (p * 100).toFixed(1) + '%';
+  document.getElementById('videoBarFill').style.width = (p * 100).toFixed(1) + '%';
+  document.getElementById('recordStatus').textContent = `Recording… ${(p*100).toFixed(0)}%`;
+}
+
+function stopRecording() {
+  recording = false;
+  state.animating = false;
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  else finishRecording();
+}
+
+function finishRecording() {
+  recording = false;
+  state.animating = false;
+  document.querySelectorAll('#controls button, #controls select, #controls input').forEach(el => el.disabled = false);
+  applyUIState();  // re-sync
+  document.getElementById('videoBar').style.display = 'none';
+  document.getElementById('videoBarFill').style.width = '0%';
+  document.getElementById('recordModal').classList.remove('open');
+}
+
+// ══════════════════════════════════════════════════════════════
 //  INTERACTIONS
-// ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
 let drag = { active: false, startX: 0, startY: 0, startCx: 0, startCy: 0 };
 
-// Pixel → complex
 function px2complex(px, py) {
   const dpr = window.devicePixelRatio || 1;
   const ox = (px * dpr - canvas.width  * 0.5) / state.zoom;
@@ -785,10 +1407,9 @@ function px2complex(px, py) {
   return [state.cx + ox, state.cy - oy];
 }
 
-// Wheel zoom (centered on cursor)
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
-  if (state.animating) return;
+  cancelAnimation();
   const factor = e.deltaY < 0 ? 1.25 : 0.8;
   const [rx, ry] = px2complex(e.clientX, e.clientY);
   state.cx = rx + (state.cx - rx) / factor;
@@ -797,10 +1418,10 @@ canvas.addEventListener('wheel', e => {
   schedRender();
 }, { passive: false });
 
-// Pan
 canvas.addEventListener('mousedown', e => {
   if (e.button !== 0) return;
-  if (state.animating) return;
+  if (recording) return;
+  cancelAnimation();
   drag.active = true;
   drag.startX = e.clientX; drag.startY = e.clientY;
   drag.startCx = state.cx; drag.startCy = state.cy;
@@ -816,8 +1437,7 @@ window.addEventListener('mousemove', e => {
     state.cy = drag.startCy + dy;
     schedRender();
   }
-  // Alt + move → adjust Julia c
-  if (e.altKey && state.type === 1) {
+  if (e.altKey && state.type === 1 && !recording) {
     const [rx, ry] = px2complex(e.clientX, e.clientY);
     state.jcre = rx; state.jcim = ry;
     syncJuliaSliders();
@@ -826,25 +1446,24 @@ window.addEventListener('mousemove', e => {
   resetHideTimer();
 });
 
-window.addEventListener('mouseup', () => {
-  drag.active = false;
-  canvas.classList.remove('dragging');
-});
+window.addEventListener('mouseup', () => { drag.active = false; canvas.classList.remove('dragging'); });
 
-// Double-click → center on point
 canvas.addEventListener('dblclick', e => {
-  if (state.animating) return;
+  if (recording) return;
+  cancelAnimation();
   const [rx, ry] = px2complex(e.clientX, e.clientY);
   state.cx = rx; state.cy = ry;
   schedRender();
 });
 
-// ── Touch support ─────────────────────────────────────
+// ── Touch ─────────────────────────────────────────────────────
 let touches = {};
-let pinchDist0 = null, pinchZoom0 = null, pinchCx0 = null, pinchCy0 = null;
+let pinchDist0 = null, pinchZoom0 = null;
 
 canvas.addEventListener('touchstart', e => {
   e.preventDefault();
+  if (recording) return;
+  cancelAnimation();
   for (const t of e.changedTouches) touches[t.identifier] = { x: t.clientX, y: t.clientY };
   const ids = Object.keys(touches);
   if (ids.length === 1) {
@@ -857,7 +1476,6 @@ canvas.addEventListener('touchstart', e => {
     const a = touches[ids[0]], b = touches[ids[1]];
     pinchDist0 = Math.hypot(b.x-a.x, b.y-a.y);
     pinchZoom0 = state.zoom;
-    pinchCx0 = state.cx; pinchCy0 = state.cy;
   }
   resetHideTimer();
 }, { passive: false });
@@ -867,48 +1485,118 @@ canvas.addEventListener('touchmove', e => {
   for (const t of e.changedTouches) touches[t.identifier] = { x: t.clientX, y: t.clientY };
   const ids = Object.keys(touches);
   const dpr = window.devicePixelRatio || 1;
-
   if (ids.length === 1 && drag.active) {
     const t = touches[ids[0]];
-    const dx = (t.x - drag.startX) * dpr / state.zoom;
-    const dy = (t.y - drag.startY) * dpr / state.zoom;
-    state.cx = drag.startCx - dx;
-    state.cy = drag.startCy + dy;
+    state.cx = drag.startCx - (t.x - drag.startX) * dpr / state.zoom;
+    state.cy = drag.startCy + (t.y - drag.startY) * dpr / state.zoom;
     schedRender();
   } else if (ids.length >= 2) {
     const a = touches[ids[0]], b = touches[ids[1]];
     const dist = Math.hypot(b.x-a.x, b.y-a.y);
-    if (pinchDist0 && pinchZoom0) {
-      state.zoom = pinchZoom0 * (dist / pinchDist0);
-      schedRender();
-    }
+    if (pinchDist0 && pinchZoom0) { state.zoom = pinchZoom0 * (dist / pinchDist0); schedRender(); }
   }
   resetHideTimer();
 }, { passive: false });
 
 canvas.addEventListener('touchend', e => {
   for (const t of e.changedTouches) delete touches[t.identifier];
-  if (Object.keys(touches).length < 2) {
-    pinchDist0 = null;
-    drag.active = false;
-  }
+  if (Object.keys(touches).length < 2) { pinchDist0 = null; drag.active = false; }
 }, { passive: false });
 
-// ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+//  KEYBOARD SHORTCUTS
+// ══════════════════════════════════════════════════════════════
+window.addEventListener('keydown', e => {
+  // Don't fire when typing in an input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (recording) { if (e.key === 'Escape') stopRecording(); return; }
+
+  const panDelta = 50 / state.zoom * (window.devicePixelRatio || 1);
+  switch (e.key) {
+    case 'ArrowLeft':  e.preventDefault(); cancelAnimation(); state.cx -= panDelta; schedRender(); break;
+    case 'ArrowRight': e.preventDefault(); cancelAnimation(); state.cx += panDelta; schedRender(); break;
+    case 'ArrowUp':    e.preventDefault(); cancelAnimation(); state.cy += panDelta; schedRender(); break;
+    case 'ArrowDown':  e.preventDefault(); cancelAnimation(); state.cy -= panDelta; schedRender(); break;
+    case '+': case '=':
+      { const [rx, ry] = px2complex(canvas.clientWidth/2, canvas.clientHeight/2);
+        state.cx = rx + (state.cx-rx)/1.25; state.cy = ry + (state.cy-ry)/1.25; state.zoom *= 1.25; schedRender(); } break;
+    case '-': case '_':
+      { const [rx, ry] = px2complex(canvas.clientWidth/2, canvas.clientHeight/2);
+        state.cx = rx + (state.cx-rx)/0.8; state.cy = ry + (state.cy-ry)/0.8; state.zoom *= 0.8; schedRender(); } break;
+    case 'r': case 'R':
+      { cancelAnimation(); const d = DEFAULTS[state.type]; state.cx = d.cx; state.cy = d.cy; state.zoom = d.zoom; schedRender(); } break;
+    case 's': case 'S': takeShot(2); break;
+    case 'h': case 'H': ui.classList.toggle('hidden'); clearTimeout(hideTimer); break;
+    case 'a': case 'A':
+      state.aa = !state.aa;
+      document.getElementById('btnAA').textContent = 'AA: ' + (state.aa ? 'ON' : 'OFF');
+      document.getElementById('btnAA').classList.toggle('active', state.aa);
+      savePrefs(); schedRender(); break;
+    case 'p': case 'P':
+      state.palette = (state.palette + 1) % 6;
+      document.getElementById('paletteSelect').value = state.palette;
+      savePrefs(); schedRender(); break;
+    case '1': state.type = 0; switchFractal(); break;
+    case '2': state.type = 1; switchFractal(); break;
+    case '3': state.type = 2; switchFractal(); break;
+    case '4': state.type = 3; switchFractal(); break;
+    case 'i': case 'I':
+      state.showFPS = !state.showFPS;
+      { const el = document.getElementById('ovFPS');
+        el.style.display = state.showFPS ? '' : 'none';
+        if (!state.showFPS) el.textContent = '—'; }
+      savePrefs(); break;
+    case 'u': case 'U': shareURL(); break;
+    case 't': case 'T': toggleTour(); break;
+    case 'f': case 'F':
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+      else document.exitFullscreen();
+      break;
+    case '?': case '/': toggleHelp(); break;
+    case 'Escape':
+      cancelAnimation();
+      if (tourOpen) toggleTour();
+      if (document.getElementById('helpModal').classList.contains('open')) toggleHelp();
+      if (document.getElementById('recordModal').classList.contains('open')) closeRecordModal();
+      break;
+  }
+  resetHideTimer();
+});
+
+function switchFractal() {
+  document.getElementById('fractalSelect').value = state.type;
+  const d = DEFAULTS[state.type];
+  state.cx = d.cx; state.cy = d.cy; state.zoom = d.zoom;
+  document.getElementById('juliaControls').style.display = state.type === 1 ? 'block' : 'none';
+  schedRender();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  HELP MODAL
+// ══════════════════════════════════════════════════════════════
+function toggleHelp() {
+  document.getElementById('helpModal').classList.toggle('open');
+}
+
+// ══════════════════════════════════════════════════════════════
 //  UI CONTROLS
-// ══════════════════════════════════════════════════════
-const fractalSel = document.getElementById('fractalSelect');
-const paletteSel = document.getElementById('paletteSelect');
-const iterSlider = document.getElementById('iterSlider');
-const colorOffSlider = document.getElementById('colorOff');
-const jcreSlider  = document.getElementById('jcre');
-const jcimSlider  = document.getElementById('jcim');
-const juliaDiv    = document.getElementById('juliaControls');
-const btnAA       = document.getElementById('btnAA');
-const btnReset    = document.getElementById('btnReset');
-const btnShare    = document.getElementById('btnShare');
-const btnShot2x   = document.getElementById('btnShot2x');
-const btnShot4x   = document.getElementById('btnShot4x');
+// ══════════════════════════════════════════════════════════════
+const fractalSel    = document.getElementById('fractalSelect');
+const paletteSel    = document.getElementById('paletteSelect');
+const colorModeSel  = document.getElementById('colorModeSelect');
+const iterSlider    = document.getElementById('iterSlider');
+const colorOffSlider= document.getElementById('colorOff');
+const jcreSlider    = document.getElementById('jcre');
+const jcimSlider    = document.getElementById('jcim');
+const juliaDiv      = document.getElementById('juliaControls');
+const btnAA         = document.getElementById('btnAA');
+const btnReset      = document.getElementById('btnReset');
+const btnTour       = document.getElementById('btnTour');
+const btnShare      = document.getElementById('btnShare');
+const btnShot2x     = document.getElementById('btnShot2x');
+const btnShot4x     = document.getElementById('btnShot4x');
+const btnRecord     = document.getElementById('btnRecord');
+const ui            = document.getElementById('ui');
 
 function syncJuliaSliders() {
   jcreSlider.value = state.jcre;
@@ -925,17 +1613,23 @@ function updateSliderPct(el) {
 }
 
 function applyUIState() {
-  fractalSel.value = state.type;
-  paletteSel.value = state.palette;
-  iterSlider.value = state.maxIter;
+  fractalSel.value   = state.type;
+  paletteSel.value   = state.palette;
+  colorModeSel.value = state.colorMode;
+  iterSlider.value   = state.maxIter;
   colorOffSlider.value = state.colorOff;
   document.getElementById('iterVal').textContent = state.maxIter;
   document.getElementById('colorOffVal').textContent = state.colorOff.toFixed(2);
   juliaDiv.style.display = state.type === 1 ? 'block' : 'none';
   btnAA.textContent = 'AA: ' + (state.aa ? 'ON' : 'OFF');
   btnAA.classList.toggle('active', state.aa);
+  const fpsel = document.getElementById('ovFPS');
+  fpsel.style.display = state.showFPS ? '' : 'none';
   syncJuliaSliders();
   [iterSlider, colorOffSlider].forEach(updateSliderPct);
+  // Also update record sliders
+  updateSliderPct(document.getElementById('recExp'));
+  updateSliderPct(document.getElementById('recDur'));
 }
 
 fractalSel.addEventListener('change', () => {
@@ -946,127 +1640,131 @@ fractalSel.addEventListener('change', () => {
   schedRender();
 });
 
-paletteSel.addEventListener('change', () => {
-  state.palette = parseInt(paletteSel.value);
-  schedRender();
-});
+paletteSel.addEventListener('change', () => { state.palette = parseInt(paletteSel.value); savePrefs(); schedRender(); });
+colorModeSel.addEventListener('change', () => { state.colorMode = parseInt(colorModeSel.value); savePrefs(); schedRender(); });
 
 iterSlider.addEventListener('input', () => {
   state.maxIter = parseInt(iterSlider.value);
   document.getElementById('iterVal').textContent = state.maxIter;
-  updateSliderPct(iterSlider);
-  schedRender();
+  updateSliderPct(iterSlider); savePrefs(); schedRender();
 });
 
 colorOffSlider.addEventListener('input', () => {
   state.colorOff = parseFloat(colorOffSlider.value);
   document.getElementById('colorOffVal').textContent = state.colorOff.toFixed(2);
-  updateSliderPct(colorOffSlider);
-  schedRender();
+  updateSliderPct(colorOffSlider); savePrefs(); schedRender();
 });
 
 jcreSlider.addEventListener('input', () => {
   state.jcre = parseFloat(jcreSlider.value);
   document.getElementById('jcreVal').textContent = state.jcre.toFixed(3);
-  updateSliderPct(jcreSlider);
-  schedRender();
+  updateSliderPct(jcreSlider); schedRender();
 });
 
 jcimSlider.addEventListener('input', () => {
   state.jcim = parseFloat(jcimSlider.value);
   document.getElementById('jcimVal').textContent = state.jcim.toFixed(3);
-  updateSliderPct(jcimSlider);
-  schedRender();
+  updateSliderPct(jcimSlider); schedRender();
 });
 
 btnAA.addEventListener('click', () => {
   state.aa = !state.aa;
   btnAA.textContent = 'AA: ' + (state.aa ? 'ON' : 'OFF');
   btnAA.classList.toggle('active', state.aa);
-  schedRender();
+  savePrefs(); schedRender();
 });
 
 btnReset.addEventListener('click', () => {
+  cancelAnimation();
   const d = DEFAULTS[state.type];
   state.cx = d.cx; state.cy = d.cy; state.zoom = d.zoom;
   schedRender();
 });
 
-btnShare.addEventListener('click', () => {
+btnTour.addEventListener('click', toggleTour);
+btnShot2x.addEventListener('click', () => takeShot(2));
+btnShot4x.addEventListener('click', () => takeShot(4));
+btnRecord.addEventListener('click', openRecordModal);
+document.getElementById('btnHelp').addEventListener('click', toggleHelp);
+document.getElementById('helpClose').addEventListener('click', toggleHelp);
+document.getElementById('helpModal').addEventListener('click', e => { if (e.target === document.getElementById('helpModal')) toggleHelp(); });
+document.getElementById('recordModal').addEventListener('click', e => { if (e.target === document.getElementById('recordModal')) closeRecordModal(); });
+document.getElementById('recordModalClose').addEventListener('click', closeRecordModal);
+document.getElementById('recStartBtn').addEventListener('click', startRecording);
+document.getElementById('recCancelBtn').addEventListener('click', stopRecording);
+
+// Record sliders
+const recExpSlider = document.getElementById('recExp');
+const recDurSlider = document.getElementById('recDur');
+recExpSlider.addEventListener('input', () => {
+  document.getElementById('recExpVal').textContent = parseFloat(recExpSlider.value).toFixed(1);
+  updateSliderPct(recExpSlider);
+});
+recDurSlider.addEventListener('input', () => {
+  document.getElementById('recDurVal').textContent = recDurSlider.value;
+  updateSliderPct(recDurSlider);
+});
+
+function shareURL() {
   const p = new URLSearchParams({
-    cx:   state.cx.toPrecision(16),
-    cy:   state.cy.toPrecision(16),
-    zoom: state.zoom.toPrecision(10),
-    type: state.type,
-    jcre: state.jcre,
-    jcim: state.jcim,
-    iter: state.maxIter,
-    pal:  state.palette,
-    coff: state.colorOff,
-    aa:   state.aa ? '1' : '0',
+    cx: state.cx.toPrecision(16), cy: state.cy.toPrecision(16),
+    zoom: state.zoom.toPrecision(10), type: state.type,
+    jcre: state.jcre, jcim: state.jcim, iter: state.maxIter,
+    pal: state.palette, coff: state.colorOff, aa: state.aa ? '1' : '0',
+    cm: state.colorMode,
   });
   const url = location.origin + location.pathname + '?' + p.toString();
   navigator.clipboard.writeText(url).then(() => {
     btnShare.textContent = 'Copied!';
-    setTimeout(() => { btnShare.textContent = 'Share URL'; }, 2000);
-  }).catch(() => {
-    prompt('Copy this URL:', url);
-  });
-});
+    setTimeout(() => { btnShare.textContent = 'Share'; }, 2000);
+  }).catch(() => prompt('Copy this URL:', url));
+}
+btnShare.addEventListener('click', shareURL);
 
-btnShot2x.addEventListener('click', () => takeShot(2));
-btnShot4x.addEventListener('click', () => takeShot(4));
-
-// ── Coordinate overlay ────────────────────────────────
+// ── Overlay ───────────────────────────────────────────────────
 function updateOverlay() {
   document.getElementById('ovRe').textContent   = state.cx.toFixed(8);
   document.getElementById('ovIm').textContent   = state.cy.toFixed(8);
   document.getElementById('ovZoom').textContent = state.zoom >= 1e6
-    ? state.zoom.toExponential(3)
-    : Math.round(state.zoom).toString();
+    ? state.zoom.toExponential(3) : Math.round(state.zoom).toString();
   document.getElementById('ovFrac').textContent = FRACTAL_NAMES[state.type];
 }
 
-// ── Auto-hide controls after 3 s inactivity ───────────
+// ── Auto-hide UI ──────────────────────────────────────────────
 let hideTimer = null;
-const ui = document.getElementById('ui');
-
 function resetHideTimer() {
   ui.classList.remove('hidden');
   clearTimeout(hideTimer);
-  hideTimer = setTimeout(() => ui.classList.add('hidden'), 3000);
+  hideTimer = setTimeout(() => {
+    // Don't hide if a modal is open
+    if (!document.getElementById('helpModal').classList.contains('open') &&
+        !document.getElementById('recordModal').classList.contains('open')) {
+      ui.classList.add('hidden');
+    }
+  }, 3000);
 }
+['mousemove','mousedown','touchstart','keydown','wheel']
+  .forEach(ev => window.addEventListener(ev, resetHideTimer, { passive: true }));
 
-['mousemove','mousedown','touchstart','keydown','wheel'].forEach(ev => {
-  window.addEventListener(ev, resetHideTimer, { passive: true });
-});
-
-// ══════════════════════════════════════════════════════
-//  RESIZE  +  INIT
-// ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
+buildTourCards();
 applyUIState();
-
-// Start animation loop
 requestAnimationFrame(loop);
 
-// If no URL params, run intro; otherwise jump to state directly
 const hasURLParams = location.search.length > 1;
 if (!hasURLParams) {
   state.animating = true;
-  requestAnimationFrame(runIntro);
-  // hide intro text after animation
-  setTimeout(() => {
-    const intro = document.getElementById('intro');
-    if (intro) { intro.classList.add('hidden'); setTimeout(() => intro.remove(), 1200); }
-  }, INTRO_DUR + 300);
+  // Delay intro start slightly so the spinner is visible
+  setTimeout(() => requestAnimationFrame(runIntro), 200);
+  setTimeout(hideIntro, INTRO_DUR + 500);
 } else {
-  const intro = document.getElementById('intro');
-  if (intro) { intro.classList.add('hidden'); setTimeout(() => intro.remove(), 600); }
+  hideIntro();
   schedRender();
 }
-
 resetHideTimer();
 </script>
 </body>
