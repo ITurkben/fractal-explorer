@@ -2,7 +2,7 @@
 
 An interactive, GPU-accelerated fractal explorer built with vanilla JavaScript and WebGL 2. Explore breathtaking mathematical structures in real time — right in your browser.
 
-**[Live Demo on GitHub Pages](https://karaman7090.github.io/fractal-explorer/)**
+**[Live Demo on GitHub Pages](https://iturkben.github.io/fractal-explorer/)**
 
 ---
 
