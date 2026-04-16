@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Fractal Explorer</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #000;
+    overflow: hidden;
+    font-family: 'Courier New', Courier, monospace;
+    user-select: none;
+  }
+
+  canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    cursor: crosshair;
+  }
+  canvas.dragging { cursor: grabbing; }
+
+  /* ── UI Layer ─────────────────────────────────────────── */
+  #ui {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+  }
+  #ui.hidden { opacity: 0; }
+
+  /* Glassmorphism base */
+  .glass {
+    background: rgba(10, 12, 20, 0.55);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 16px;
+    color: #e8ecf4;
+  }
+
+  /* ── Controls Panel ───────────────────────────────────── */
+  #controls {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 270px;
+    padding: 18px 18px 14px;
+    pointer-events: all;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-size: 12px;
+  }
+
+  #controls h1 {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #a9c3ff;
+    margin-bottom: 2px;
+  }
+
+  .ctrl-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ctrl-row label {
+    color: #7b8fa8;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  select, input[type="range"] {
+    width: 100%;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    color: #e8ecf4;
+    padding: 5px 8px;
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  select:focus { border-color: rgba(169,195,255,0.5); }
+
+  input[type="range"] {
+    padding: 0;
+    height: 4px;
+    border-radius: 2px;
+    appearance: none;
+    -webkit-appearance: none;
+    background: linear-gradient(to right, #4d7fff var(--pct,50%), rgba(255,255,255,0.12) var(--pct,50%));
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #a9c3ff;
+    cursor: pointer;
+    border: 2px solid #1a2540;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #a9c3ff;
+    cursor: pointer;
+    border: 2px solid #1a2540;
+  }
+
+  .ctrl-row .range-val {
+    text-align: right;
+    color: #a9c3ff;
+    font-size: 11px;
+    margin-top: -2px;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  button {
+    flex: 1;
+    min-width: 70px;
+    padding: 7px 8px;
+    font-size: 11px;
+    font-family: inherit;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    background: rgba(255,255,255,0.07);
+    color: #c5d4f5;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    pointer-events: all;
+  }
+  button:hover { background: rgba(169,195,255,0.18); border-color: rgba(169,195,255,0.4); }
+  button:active { background: rgba(169,195,255,0.28); }
+  button.active { background: rgba(100,160,255,0.3); border-color: rgba(169,195,255,0.6); color: #fff; }
+
+  #juliaControls { display: none; }
+
+  .separator {
+    height: 1px;
+    background: rgba(255,255,255,0.08);
+    margin: 2px 0;
+  }
+
+  /* ── Coordinate Overlay ───────────────────────────────── */
+  #overlay {
+    position: absolute;
+    bottom: 18px;
+    left: 18px;
+    padding: 10px 14px;
+    pointer-events: none;
+    font-size: 11px;
+    line-height: 1.7;
+    color: #7b8fa8;
+  }
+  #overlay span { color: #a9c3ff; }
+
+  /* ── Loading / Intro ──────────────────────────────────── */
+  #intro {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    transition: opacity 1s ease;
+  }
+  #intro.hidden { opacity: 0; }
+  #introText {
+    text-align: center;
+    color: rgba(169,195,255,0.8);
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+
+  /* ── Tooltip ──────────────────────────────────────────── */
+  .hint {
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+    line-height: 1.5;
+    margin-top: 2px;
+  }
+
+  /* ── Mobile adjustments ───────────────────────────────── */
+  @media (max-width: 480px) {
+    #controls {
+      top: auto;
+      bottom: 0;
+      right: 0;
+      left: 0;
+      width: 100%;
+      border-radius: 16px 16px 0 0;
+      max-height: 55vh;
+      overflow-y: auto;
+    }
+    #overlay { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div id="ui">
+  <!-- Intro text -->
+  <div id="intro">
+    <div id="introText">Fractal Explorer<br><span style="font-size:10px;opacity:0.6">Loading…</span></div>
+  </div>
+
+  <!-- Main controls panel -->
+  <div id="controls" class="glass">
+    <h1>Fractal Explorer</h1>
+
+    <div class="ctrl-row">
+      <label>Fractal</label>
+      <select id="fractalSelect">
+        <option value="0">Mandelbrot Set</option>
+        <option value="1">Julia Set</option>
+        <option value="2">Burning Ship</option>
+        <option value="3">Newton (z³−1)</option>
+      </select>
+    </div>
+
+    <div id="juliaControls">
+      <div class="ctrl-row">
+        <label>Julia Re(c): <span id="jcreVal">−0.70</span></label>
+        <input type="range" id="jcre" min="-2" max="2" step="0.001" value="-0.7">
+      </div>
+      <div class="ctrl-row">
+        <label>Julia Im(c): <span id="jcimVal">0.27</span></label>
+        <input type="range" id="jcim" min="-2" max="2" step="0.001" value="0.27">
+      </div>
+      <div class="hint">Or hold <kbd style="background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px">Alt</kbd> + move mouse to set c live</div>
+    </div>
+
+    <div class="ctrl-row">
+      <label>Color Palette</label>
+      <select id="paletteSelect">
+        <option value="0">Classic Fire</option>
+        <option value="1">Deep Ocean</option>
+        <option value="2">Psychedelic</option>
+        <option value="3">Black &amp; White</option>
+        <option value="4" selected>Smooth Rainbow</option>
+        <option value="5">Electric Neon</option>
+      </select>
+    </div>
+
+    <div class="ctrl-row">
+      <label>Max Iterations <span class="range-val" id="iterVal">300</span></label>
+      <input type="range" id="iterSlider" min="50" max="2000" step="10" value="300">
+    </div>
+
+    <div class="ctrl-row">
+      <label>Color Offset <span class="range-val" id="colorOffVal">0.00</span></label>
+      <input type="range" id="colorOff" min="0" max="1" step="0.01" value="0">
+    </div>
+
+    <div class="separator"></div>
+
+    <div class="btn-row">
+      <button id="btnAA" title="Toggle 2× anti-aliasing">AA: OFF</button>
+      <button id="btnReset">Reset View</button>
+    </div>
+    <div class="btn-row">
+      <button id="btnShare">Share URL</button>
+      <button id="btnShot2x">PNG 2×</button>
+      <button id="btnShot4x">PNG 4×</button>
+    </div>
+
+    <div class="hint">Scroll to zoom · Drag to pan · Double-click to center</div>
+  </div>
+
+  <!-- Coordinate overlay -->
+  <div id="overlay" class="glass">
+    Re: <span id="ovRe">−0.500000</span><br>
+    Im: <span id="ovIm">0.000000</span><br>
+    Zoom: <span id="ovZoom">300</span>×<br>
+    Fractal: <span id="ovFrac">Mandelbrot</span>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ══════════════════════════════════════════════════════
+//  SHADERS
+// ══════════════════════════════════════════════════════
+const VERT_SRC = `#version 300 es
+in vec2 a_pos;
+void main() {
+  gl_Position = vec4(a_pos, 0.0, 1.0);
+}`;
+
+const FRAG_SRC = `#version 300 es
+precision highp float;
+
+out vec4 fragColor;
+
+uniform vec2 u_res;          // canvas resolution
+uniform vec2 u_cx;           // center real  (hi, lo)
+uniform vec2 u_cy;           // center imag  (hi, lo)
+uniform float u_invZoom;     // 1 / zoom (complex units per pixel)
+uniform int  u_type;         // 0=Mandelbrot 1=Julia 2=BurningShip 3=Newton
+uniform vec2 u_jc;           // Julia constant c
+uniform int  u_maxIter;
+uniform int  u_palette;
+uniform float u_colorOff;
+uniform bool u_aa;           // 2×2 supersampling
+
+// ── Double-float arithmetic (Veltkamp-Dekker) ────────────────
+vec2 df_add(vec2 a, vec2 b) {
+  float s = a.x + b.x;
+  float v = s - a.x;
+  float e = (a.x - (s - v)) + (b.x - v) + a.y + b.y;
+  float hi = s + e;
+  return vec2(hi, e - (hi - s));
+}
+
+vec2 df_sub(vec2 a, vec2 b) {
+  return df_add(a, vec2(-b.x, -b.y));
+}
+
+vec2 df_two_prod(float a, float b) {
+  float p = a * b;
+  const float SPLIT = 4097.0;
+  float at = SPLIT * a, ah = at - (at - a), al = a - ah;
+  float bt = SPLIT * b, bh = bt - (bt - b), bl = b - bh;
+  float err = ((ah*bh - p) + ah*bl + al*bh) + al*bl;
+  return vec2(p, err);
+}
+
+vec2 df_mul(vec2 a, vec2 b) {
+  vec2 p = df_two_prod(a.x, b.x);
+  p.y += a.x*b.y + a.y*b.x;
+  float hi = p.x + p.y;
+  return vec2(hi, p.y - (hi - p.x));
+}
+
+vec2 df_sqr(vec2 a) { return df_mul(a, a); }
+
+vec2 df_f(float f) { return vec2(f, 0.0); }
+
+// ── Pixel → complex coordinate (double) ──────────────────────
+vec2 px2df(float px, vec2 center) {
+  float off = (px) * u_invZoom;
+  return df_add(center, df_f(off));
+}
+
+// ── Color palettes ────────────────────────────────────────────
+vec3 hsv(float h, float s, float v) {
+  vec3 c = abs(mod(vec3(h*6.0)+vec3(0,4,2), 6.0) - 3.0) - 1.0;
+  return v * mix(vec3(1.0), clamp(c,0.0,1.0), s);
+}
+
+vec3 palette(float t) {
+  t = fract(t + u_colorOff);
+  if (u_palette == 0) { // Fire
+    if (t < 0.333) return mix(vec3(0),     vec3(1,0.1,0),   t*3.0);
+    if (t < 0.667) return mix(vec3(1,0.1,0), vec3(1,0.95,0.1), (t-0.333)*3.0);
+    return mix(vec3(1,0.95,0.1), vec3(1),   (t-0.667)*3.0);
+  }
+  if (u_palette == 1) { // Ocean
+    if (t < 0.25) return mix(vec3(0),           vec3(0.0,0.05,0.3),  t*4.0);
+    if (t < 0.55) return mix(vec3(0.0,0.05,0.3),vec3(0.0,0.5,0.9),   (t-0.25)*3.33);
+    if (t < 0.80) return mix(vec3(0.0,0.5,0.9), vec3(0.4,0.9,1.0),   (t-0.55)*4.0);
+    return mix(vec3(0.4,0.9,1.0), vec3(1.0),   (t-0.80)*5.0);
+  }
+  if (u_palette == 2) { // Psychedelic
+    return vec3(
+      0.5+0.5*cos(6.2832*(1.0*t+0.00)),
+      0.5+0.5*cos(6.2832*(0.7*t+0.33)),
+      0.5+0.5*cos(6.2832*(1.3*t+0.67))
+    );
+  }
+  if (u_palette == 3) { // B&W
+    return vec3(t < 0.5 ? t*2.0 : 2.0-t*2.0);
+  }
+  if (u_palette == 4) { // Smooth Rainbow
+    return hsv(t, 0.92, 0.98);
+  }
+  // Neon Electric (5)
+  return vec3(
+    0.5+0.5*sin(6.2832*t*2.1+0.0),
+    0.5+0.5*sin(6.2832*t*1.7+2.0),
+    0.5+0.5*sin(6.2832*t*3.0+4.5)
+  );
+}
+
+// ── Smooth coloring ───────────────────────────────────────────
+float smooth_t(float iter, float maxF, float logSqZ) {
+  // normalized + log smooth
+  float mu = iter + 1.0 - log2(log2(logSqZ));
+  return mu * 0.045;   // scale to get nice cycle density
+}
+
+// ── Complex multiply (single precision, for Newton) ───────────
+vec2 cmul(vec2 a, vec2 b) { return vec2(a.x*b.x-a.y*b.y, a.x*b.y+a.y*b.x); }
+vec2 cdiv(vec2 a, vec2 b) {
+  float d = dot(b,b);
+  return vec2(dot(a,b), a.y*b.x-a.x*b.y) / d;
+}
+
+// ── Fractal kernels ───────────────────────────────────────────
+vec4 fractal(vec2 dfX, vec2 dfY) {
+  float maxF = float(u_maxIter);
+
+  // Extract working floats from double center
+  // For the iteration we use single precision floats derived from the df coords.
+  // The starting value is exact (0 for Mandelbrot, pixel-coord for Julia).
+  float cx = dfX.x + dfX.y;
+  float cy = dfY.x + dfY.y;
+
+  // ── Mandelbrot & Julia (same loop, different init) ────────
+  if (u_type == 0 || u_type == 1) {
+    vec2 z, c;
+    if (u_type == 0) { z = vec2(0.0); c = vec2(cx, cy); }
+    else             { z = vec2(cx, cy); c = u_jc; }
+
+    // Use double-float for z to improve deep-zoom quality
+    vec2 zrdf = (u_type == 0) ? df_f(0.0) : dfX;
+    vec2 zidf = (u_type == 0) ? df_f(0.0) : dfY;
+    vec2 crdf = (u_type == 0) ? dfX : df_f(u_jc.x);
+    vec2 cidf = (u_type == 0) ? dfY : df_f(u_jc.y);
+
+    float iter = 0.0;
+    for (int i = 0; i < 2000; i++) {
+      if (i >= u_maxIter) break;
+      // z = z^2 + c  using double-float
+      vec2 zr2 = df_sub(df_sqr(zrdf), df_sqr(zidf));
+      vec2 zi2 = df_add(df_mul(df_f(2.0), df_mul(zrdf, zidf)), cidf);
+      zrdf = df_add(zr2, crdf);
+      zidf = zi2;
+
+      // Check escape with single-precision magnitude
+      float zrF = zrdf.x + zrdf.y;
+      float ziF = zidf.x + zidf.y;
+      float mag2 = zrF*zrF + ziF*ziF;
+      if (mag2 > 65536.0) {
+        float logSqZ = log2(mag2);
+        float t = smooth_t(float(i), maxF, logSqZ);
+        return vec4(palette(t), 1.0);
+      }
+      iter = float(i);
+    }
+    return vec4(0.0, 0.0, 0.0, 1.0);
+  }
+
+  // ── Burning Ship ─────────────────────────────────────────
+  if (u_type == 2) {
+    vec2 zrdf = df_f(0.0);
+    vec2 zidf = df_f(0.0);
+
+    for (int i = 0; i < 2000; i++) {
+      if (i >= u_maxIter) break;
+      float zrF = abs(zrdf.x + zrdf.y);
+      float ziF = abs(zidf.x + zidf.y);
+      zrdf = df_f(zrF);
+      zidf = df_f(ziF);
+
+      vec2 newZr = df_add(df_sub(df_sqr(zrdf), df_sqr(zidf)), dfX);
+      vec2 newZi = df_add(df_mul(df_f(2.0), df_mul(zrdf, zidf)), dfY);
+      zrdf = newZr; zidf = newZi;
+
+      float mag2 = zrF*zrF + ziF*ziF;
+      if (mag2 > 65536.0) {
+        float t = smooth_t(float(i), maxF, log2(mag2));
+        return vec4(palette(t), 1.0);
+      }
+    }
+    return vec4(0.0, 0.0, 0.0, 1.0);
+  }
+
+  // ── Newton (z³ − 1 = 0) ──────────────────────────────────
+  if (u_type == 3) {
+    vec2 z = vec2(cx, cy);
+    const vec2 r0 = vec2(1.0, 0.0);
+    const vec2 r1 = vec2(-0.5,  0.8660254);
+    const vec2 r2 = vec2(-0.5, -0.8660254);
+
+    for (int i = 0; i < 2000; i++) {
+      if (i >= u_maxIter) break;
+      vec2 z2 = cmul(z, z);
+      vec2 z3 = cmul(z2, z);
+      // f(z)=z³-1, f'(z)=3z²
+      vec2 fz  = z3 - vec2(1.0, 0.0);
+      vec2 fpz = vec2(3.0,0.0) * z2;
+      vec2 dz  = cdiv(fz, fpz);
+      z -= dz;
+
+      float eps = 1e-6;
+      float d0 = dot(z-r0, z-r0);
+      float d1 = dot(z-r1, z-r1);
+      float d2 = dot(z-r2, z-r2);
+      float minD = min(d0, min(d1, d2));
+      if (minD < eps*eps) {
+        float bright = 1.0 - float(i)/maxF;
+        bright = pow(bright, 0.4);
+        if (d0 < d1 && d0 < d2) return vec4(0.2+0.8*bright, 0.4*bright, 0.8*bright, 1.0); // blue root
+        if (d1 < d2)            return vec4(0.8*bright, 0.2+0.8*bright, 0.2*bright, 1.0); // green root
+        return vec4(0.9*bright, 0.3*bright, 0.2+0.7*bright, 1.0); // red root
+      }
+    }
+    return vec4(0.0, 0.0, 0.0, 1.0);
+  }
+
+  return vec4(0.0);
+}
+
+// ── Main ─────────────────────────────────────────────────────
+void main() {
+  vec2 fc = gl_FragCoord.xy;
+
+  if (u_aa) {
+    // 2×2 supersampling (4 samples per pixel, offset by 0.25/0.75)
+    vec4 col = vec4(0.0);
+    for (int dy = 0; dy < 2; dy++) {
+      for (int dx = 0; dx < 2; dx++) {
+        vec2 sc = fc + vec2(float(dx)*0.5-0.25, float(dy)*0.5-0.25);
+        float ox = sc.x - u_res.x*0.5;
+        float oy = sc.y - u_res.y*0.5;
+        vec2 dfX = df_add(u_cx, df_f(ox * u_invZoom));
+        vec2 dfY = df_add(u_cy, df_f(oy * u_invZoom));
+        col += fractal(dfX, dfY);
+      }
+    }
+    fragColor = col * 0.25;
+  } else {
+    float ox = fc.x - u_res.x*0.5;
+    float oy = fc.y - u_res.y*0.5;
+    vec2 dfX = df_add(u_cx, df_f(ox * u_invZoom));
+    vec2 dfY = df_add(u_cy, df_f(oy * u_invZoom));
+    fragColor = fractal(dfX, dfY);
+  }
+}`;
+
+// ══════════════════════════════════════════════════════
+//  WebGL SETUP
+// ══════════════════════════════════════════════════════
+const canvas = document.getElementById('canvas');
+const gl = canvas.getContext('webgl2', { antialias: false, preserveDrawingBuffer: true });
+if (!gl) { document.body.innerHTML = '<p style="color:#fff;padding:40px">WebGL 2 is required. Please use a modern browser.</p>'; throw 0; }
+
+function compileShader(src, type) {
+  const sh = gl.createShader(type);
+  gl.shaderSource(sh, src);
+  gl.compileShader(sh);
+  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS))
+    throw new Error(gl.getShaderInfoLog(sh));
+  return sh;
+}
+
+function buildProgram(vsrc, fsrc) {
+  const prog = gl.createProgram();
+  gl.attachShader(prog, compileShader(vsrc, gl.VERTEX_SHADER));
+  gl.attachShader(prog, compileShader(fsrc, gl.FRAGMENT_SHADER));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS))
+    throw new Error(gl.getProgramInfoLog(prog));
+  return prog;
+}
+
+const prog = buildProgram(VERT_SRC, FRAG_SRC);
+
+// Full-screen quad
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+const aPos = gl.getAttribLocation(prog, 'a_pos');
+gl.enableVertexAttribArray(aPos);
+gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+gl.bindVertexArray(null);
+
+// Cache uniforms
+const U = {};
+['u_res','u_cx','u_cy','u_invZoom','u_type','u_jc','u_maxIter','u_palette','u_colorOff','u_aa']
+  .forEach(n => U[n] = gl.getUniformLocation(prog, n));
+
+// ══════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════
+// Double-float helper: JS double → [hi, lo] float pair
+function splitDbl(v) {
+  const hi = Math.fround(v);
+  return [hi, v - hi];
+}
+
+const DEFAULTS = [
+  { cx: -0.5,    cy: 0.0,   zoom: 300 },  // Mandelbrot
+  { cx:  0.0,    cy: 0.0,   zoom: 300 },  // Julia
+  { cx: -0.5,    cy: -0.5,  zoom: 280 },  // Burning Ship
+  { cx:  0.0,    cy: 0.0,   zoom: 200 },  // Newton
+];
+
+const FRACTAL_NAMES = ['Mandelbrot','Julia Set','Burning Ship','Newton'];
+
+const state = {
+  cx: -0.5, cy: 0.0, zoom: 300,
+  type: 0,
+  jcre: -0.7, jcim: 0.27,
+  maxIter: 300,
+  palette: 4,
+  colorOff: 0.0,
+  aa: false,
+  animating: false,
+};
+
+// ── Read URL params ───────────────────────────────────
+function readURL() {
+  const p = new URLSearchParams(location.search);
+  if (p.has('cx'))   state.cx      = parseFloat(p.get('cx'));
+  if (p.has('cy'))   state.cy      = parseFloat(p.get('cy'));
+  if (p.has('zoom')) state.zoom    = parseFloat(p.get('zoom'));
+  if (p.has('type')) state.type    = parseInt(p.get('type'));
+  if (p.has('jcre')) state.jcre    = parseFloat(p.get('jcre'));
+  if (p.has('jcim')) state.jcim    = parseFloat(p.get('jcim'));
+  if (p.has('iter')) state.maxIter = parseInt(p.get('iter'));
+  if (p.has('pal'))  state.palette = parseInt(p.get('pal'));
+  if (p.has('coff')) state.colorOff= parseFloat(p.get('coff'));
+  if (p.has('aa'))   state.aa      = p.get('aa') === '1';
+}
+readURL();
+
+// ══════════════════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════════════════
+let needsRender = true;
+function schedRender() { needsRender = true; }
+
+function resizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = Math.round(canvas.clientWidth  * dpr);
+  canvas.height = Math.round(canvas.clientHeight * dpr);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  schedRender();
+}
+
+function render(W, H, s) {
+  // s = state override for screenshot
+  const st = s || state;
+  const w = W || canvas.width;
+  const h = H || canvas.height;
+
+  gl.useProgram(prog);
+  gl.bindVertexArray(vao);
+
+  const [cxhi, cxlo] = splitDbl(st.cx);
+  const [cyhi, cylo] = splitDbl(st.cy);
+
+  gl.uniform2f(U.u_res, w, h);
+  gl.uniform2f(U.u_cx, cxhi, cxlo);
+  gl.uniform2f(U.u_cy, cyhi, cylo);
+  gl.uniform1f(U.u_invZoom, 1.0 / st.zoom);
+  gl.uniform1i(U.u_type, st.type);
+  gl.uniform2f(U.u_jc, st.jcre, st.jcim);
+  gl.uniform1i(U.u_maxIter, st.maxIter);
+  gl.uniform1i(U.u_palette, st.palette);
+  gl.uniform1f(U.u_colorOff, st.colorOff);
+  gl.uniform1i(U.u_aa, st.aa ? 1 : 0);
+
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+  gl.bindVertexArray(null);
+}
+
+// ══════════════════════════════════════════════════════
+//  SCREENSHOT (render to framebuffer at N× resolution)
+// ══════════════════════════════════════════════════════
+function takeShot(scale) {
+  const W = Math.round(canvas.clientWidth  * window.devicePixelRatio * scale);
+  const H = Math.round(canvas.clientHeight * window.devicePixelRatio * scale);
+
+  // Save the state override and boost AA for screenshot
+  const snapState = Object.assign({}, state, { aa: true });
+
+  // Framebuffer + texture
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+
+  gl.viewport(0, 0, W, H);
+  render(W, H, snapState);
+
+  const pixels = new Uint8Array(W * H * 4);
+  gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.deleteFramebuffer(fb);
+  gl.deleteTexture(tex);
+
+  // Flip Y (WebGL reads bottom-up)
+  const flipped = new Uint8ClampedArray(W * H * 4);
+  for (let y = 0; y < H; y++) {
+    const srcRow = (H - 1 - y) * W * 4;
+    flipped.set(pixels.subarray(srcRow, srcRow + W * 4), y * W * 4);
+  }
+
+  const offscreen = document.createElement('canvas');
+  offscreen.width = W; offscreen.height = H;
+  offscreen.getContext('2d').putImageData(new ImageData(flipped, W, H), 0, 0);
+  offscreen.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `fractal_${FRACTAL_NAMES[state.type].toLowerCase().replace(' ','_')}_${scale}x.png`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  ANIMATION LOOP
+// ══════════════════════════════════════════════════════
+function loop() {
+  if (needsRender) {
+    needsRender = false;
+    render();
+    updateOverlay();
+  }
+  requestAnimationFrame(loop);
+}
+
+// ══════════════════════════════════════════════════════
+//  INTRO ANIMATION  (zoom into Seahorse Valley)
+// ══════════════════════════════════════════════════════
+const INTRO_TARGET = { cx: -0.7436438870371587, cy: 0.13182590420531207, zoom: 4500 };
+let introStart = null;
+const INTRO_DUR = 5200;
+
+function runIntro(ts) {
+  if (!introStart) introStart = ts;
+  const t = Math.min((ts - introStart) / INTRO_DUR, 1.0);
+  // Smooth-step ease
+  const e = t * t * (3.0 - 2.0 * t);
+
+  state.cx   = -0.5 + (INTRO_TARGET.cx - (-0.5)) * e;
+  state.cy   =  0.0 + (INTRO_TARGET.cy -   0.0 ) * e;
+  state.zoom = 300  * Math.pow(INTRO_TARGET.zoom / 300, e);
+  schedRender();
+
+  if (t < 1.0) {
+    requestAnimationFrame(runIntro);
+  } else {
+    state.animating = false;
+    const intro = document.getElementById('intro');
+    intro.classList.add('hidden');
+    setTimeout(() => intro.remove(), 1200);
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  INTERACTIONS
+// ══════════════════════════════════════════════════════
+let drag = { active: false, startX: 0, startY: 0, startCx: 0, startCy: 0 };
+
+// Pixel → complex
+function px2complex(px, py) {
+  const dpr = window.devicePixelRatio || 1;
+  const ox = (px * dpr - canvas.width  * 0.5) / state.zoom;
+  const oy = (py * dpr - canvas.height * 0.5) / state.zoom;
+  return [state.cx + ox, state.cy - oy];
+}
+
+// Wheel zoom (centered on cursor)
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (state.animating) return;
+  const factor = e.deltaY < 0 ? 1.25 : 0.8;
+  const [rx, ry] = px2complex(e.clientX, e.clientY);
+  state.cx = rx + (state.cx - rx) / factor;
+  state.cy = ry + (state.cy - ry) / factor;
+  state.zoom *= factor;
+  schedRender();
+}, { passive: false });
+
+// Pan
+canvas.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  if (state.animating) return;
+  drag.active = true;
+  drag.startX = e.clientX; drag.startY = e.clientY;
+  drag.startCx = state.cx; drag.startCy = state.cy;
+  canvas.classList.add('dragging');
+});
+
+window.addEventListener('mousemove', e => {
+  if (drag.active) {
+    const dpr = window.devicePixelRatio || 1;
+    const dx = (e.clientX - drag.startX) * dpr / state.zoom;
+    const dy = (e.clientY - drag.startY) * dpr / state.zoom;
+    state.cx = drag.startCx - dx;
+    state.cy = drag.startCy + dy;
+    schedRender();
+  }
+  // Alt + move → adjust Julia c
+  if (e.altKey && state.type === 1) {
+    const [rx, ry] = px2complex(e.clientX, e.clientY);
+    state.jcre = rx; state.jcim = ry;
+    syncJuliaSliders();
+    schedRender();
+  }
+  resetHideTimer();
+});
+
+window.addEventListener('mouseup', () => {
+  drag.active = false;
+  canvas.classList.remove('dragging');
+});
+
+// Double-click → center on point
+canvas.addEventListener('dblclick', e => {
+  if (state.animating) return;
+  const [rx, ry] = px2complex(e.clientX, e.clientY);
+  state.cx = rx; state.cy = ry;
+  schedRender();
+});
+
+// ── Touch support ─────────────────────────────────────
+let touches = {};
+let pinchDist0 = null, pinchZoom0 = null, pinchCx0 = null, pinchCy0 = null;
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) touches[t.identifier] = { x: t.clientX, y: t.clientY };
+  const ids = Object.keys(touches);
+  if (ids.length === 1) {
+    const t = touches[ids[0]];
+    drag.active = true;
+    drag.startX = t.x; drag.startY = t.y;
+    drag.startCx = state.cx; drag.startCy = state.cy;
+  } else if (ids.length === 2) {
+    drag.active = false;
+    const a = touches[ids[0]], b = touches[ids[1]];
+    pinchDist0 = Math.hypot(b.x-a.x, b.y-a.y);
+    pinchZoom0 = state.zoom;
+    pinchCx0 = state.cx; pinchCy0 = state.cy;
+  }
+  resetHideTimer();
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) touches[t.identifier] = { x: t.clientX, y: t.clientY };
+  const ids = Object.keys(touches);
+  const dpr = window.devicePixelRatio || 1;
+
+  if (ids.length === 1 && drag.active) {
+    const t = touches[ids[0]];
+    const dx = (t.x - drag.startX) * dpr / state.zoom;
+    const dy = (t.y - drag.startY) * dpr / state.zoom;
+    state.cx = drag.startCx - dx;
+    state.cy = drag.startCy + dy;
+    schedRender();
+  } else if (ids.length >= 2) {
+    const a = touches[ids[0]], b = touches[ids[1]];
+    const dist = Math.hypot(b.x-a.x, b.y-a.y);
+    if (pinchDist0 && pinchZoom0) {
+      state.zoom = pinchZoom0 * (dist / pinchDist0);
+      schedRender();
+    }
+  }
+  resetHideTimer();
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+  for (const t of e.changedTouches) delete touches[t.identifier];
+  if (Object.keys(touches).length < 2) {
+    pinchDist0 = null;
+    drag.active = false;
+  }
+}, { passive: false });
+
+// ══════════════════════════════════════════════════════
+//  UI CONTROLS
+// ══════════════════════════════════════════════════════
+const fractalSel = document.getElementById('fractalSelect');
+const paletteSel = document.getElementById('paletteSelect');
+const iterSlider = document.getElementById('iterSlider');
+const colorOffSlider = document.getElementById('colorOff');
+const jcreSlider  = document.getElementById('jcre');
+const jcimSlider  = document.getElementById('jcim');
+const juliaDiv    = document.getElementById('juliaControls');
+const btnAA       = document.getElementById('btnAA');
+const btnReset    = document.getElementById('btnReset');
+const btnShare    = document.getElementById('btnShare');
+const btnShot2x   = document.getElementById('btnShot2x');
+const btnShot4x   = document.getElementById('btnShot4x');
+
+function syncJuliaSliders() {
+  jcreSlider.value = state.jcre;
+  jcimSlider.value = state.jcim;
+  document.getElementById('jcreVal').textContent = state.jcre.toFixed(3);
+  document.getElementById('jcimVal').textContent = state.jcim.toFixed(3);
+  updateSliderPct(jcreSlider);
+  updateSliderPct(jcimSlider);
+}
+
+function updateSliderPct(el) {
+  const pct = 100 * (el.value - el.min) / (el.max - el.min);
+  el.style.setProperty('--pct', pct + '%');
+}
+
+function applyUIState() {
+  fractalSel.value = state.type;
+  paletteSel.value = state.palette;
+  iterSlider.value = state.maxIter;
+  colorOffSlider.value = state.colorOff;
+  document.getElementById('iterVal').textContent = state.maxIter;
+  document.getElementById('colorOffVal').textContent = state.colorOff.toFixed(2);
+  juliaDiv.style.display = state.type === 1 ? 'block' : 'none';
+  btnAA.textContent = 'AA: ' + (state.aa ? 'ON' : 'OFF');
+  btnAA.classList.toggle('active', state.aa);
+  syncJuliaSliders();
+  [iterSlider, colorOffSlider].forEach(updateSliderPct);
+}
+
+fractalSel.addEventListener('change', () => {
+  state.type = parseInt(fractalSel.value);
+  const d = DEFAULTS[state.type];
+  state.cx = d.cx; state.cy = d.cy; state.zoom = d.zoom;
+  juliaDiv.style.display = state.type === 1 ? 'block' : 'none';
+  schedRender();
+});
+
+paletteSel.addEventListener('change', () => {
+  state.palette = parseInt(paletteSel.value);
+  schedRender();
+});
+
+iterSlider.addEventListener('input', () => {
+  state.maxIter = parseInt(iterSlider.value);
+  document.getElementById('iterVal').textContent = state.maxIter;
+  updateSliderPct(iterSlider);
+  schedRender();
+});
+
+colorOffSlider.addEventListener('input', () => {
+  state.colorOff = parseFloat(colorOffSlider.value);
+  document.getElementById('colorOffVal').textContent = state.colorOff.toFixed(2);
+  updateSliderPct(colorOffSlider);
+  schedRender();
+});
+
+jcreSlider.addEventListener('input', () => {
+  state.jcre = parseFloat(jcreSlider.value);
+  document.getElementById('jcreVal').textContent = state.jcre.toFixed(3);
+  updateSliderPct(jcreSlider);
+  schedRender();
+});
+
+jcimSlider.addEventListener('input', () => {
+  state.jcim = parseFloat(jcimSlider.value);
+  document.getElementById('jcimVal').textContent = state.jcim.toFixed(3);
+  updateSliderPct(jcimSlider);
+  schedRender();
+});
+
+btnAA.addEventListener('click', () => {
+  state.aa = !state.aa;
+  btnAA.textContent = 'AA: ' + (state.aa ? 'ON' : 'OFF');
+  btnAA.classList.toggle('active', state.aa);
+  schedRender();
+});
+
+btnReset.addEventListener('click', () => {
+  const d = DEFAULTS[state.type];
+  state.cx = d.cx; state.cy = d.cy; state.zoom = d.zoom;
+  schedRender();
+});
+
+btnShare.addEventListener('click', () => {
+  const p = new URLSearchParams({
+    cx:   state.cx.toPrecision(16),
+    cy:   state.cy.toPrecision(16),
+    zoom: state.zoom.toPrecision(10),
+    type: state.type,
+    jcre: state.jcre,
+    jcim: state.jcim,
+    iter: state.maxIter,
+    pal:  state.palette,
+    coff: state.colorOff,
+    aa:   state.aa ? '1' : '0',
+  });
+  const url = location.origin + location.pathname + '?' + p.toString();
+  navigator.clipboard.writeText(url).then(() => {
+    btnShare.textContent = 'Copied!';
+    setTimeout(() => { btnShare.textContent = 'Share URL'; }, 2000);
+  }).catch(() => {
+    prompt('Copy this URL:', url);
+  });
+});
+
+btnShot2x.addEventListener('click', () => takeShot(2));
+btnShot4x.addEventListener('click', () => takeShot(4));
+
+// ── Coordinate overlay ────────────────────────────────
+function updateOverlay() {
+  document.getElementById('ovRe').textContent   = state.cx.toFixed(8);
+  document.getElementById('ovIm').textContent   = state.cy.toFixed(8);
+  document.getElementById('ovZoom').textContent = state.zoom >= 1e6
+    ? state.zoom.toExponential(3)
+    : Math.round(state.zoom).toString();
+  document.getElementById('ovFrac').textContent = FRACTAL_NAMES[state.type];
+}
+
+// ── Auto-hide controls after 3 s inactivity ───────────
+let hideTimer = null;
+const ui = document.getElementById('ui');
+
+function resetHideTimer() {
+  ui.classList.remove('hidden');
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => ui.classList.add('hidden'), 3000);
+}
+
+['mousemove','mousedown','touchstart','keydown','wheel'].forEach(ev => {
+  window.addEventListener(ev, resetHideTimer, { passive: true });
+});
+
+// ══════════════════════════════════════════════════════
+//  RESIZE  +  INIT
+// ══════════════════════════════════════════════════════
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+applyUIState();
+
+// Start animation loop
+requestAnimationFrame(loop);
+
+// If no URL params, run intro; otherwise jump to state directly
+const hasURLParams = location.search.length > 1;
+if (!hasURLParams) {
+  state.animating = true;
+  requestAnimationFrame(runIntro);
+  // hide intro text after animation
+  setTimeout(() => {
+    const intro = document.getElementById('intro');
+    if (intro) { intro.classList.add('hidden'); setTimeout(() => intro.remove(), 1200); }
+  }, INTRO_DUR + 300);
+} else {
+  const intro = document.getElementById('intro');
+  if (intro) { intro.classList.add('hidden'); setTimeout(() => intro.remove(), 600); }
+  schedRender();
+}
+
+resetHideTimer();
+</script>
+</body>
+</html>
